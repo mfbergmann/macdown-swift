@@ -1,8 +1,12 @@
 import SwiftUI
 
 /// The main split view containing the markdown editor and HTML preview side by side.
-struct SplitEditorView: View {
+public struct SplitEditorView: View {
     @Bindable var document: MarkdownDocument
+
+    public init(document: MarkdownDocument) {
+        self.document = document
+    }
     @State private var renderer = MarkdownRenderer()
     @State private var composer = HTMLComposer()
     @State private var scrollSync = ScrollSync()
@@ -20,7 +24,7 @@ struct SplitEditorView: View {
     @State private var viewMode: ViewMode = .split
     @State private var editorOnRight = false
 
-    var body: some View {
+    public var body: some View {
         ZStack {
             switch viewMode {
             case .split:
@@ -192,28 +196,26 @@ struct SplitEditorView: View {
     }
 
     private var editorTextColor: PlatformColor {
-        editorTheme?.editorForeground ?? .labelColor
+        #if os(macOS)
+        editorTheme?.editorForeground ?? NSColor.labelColor
+        #else
+        editorTheme?.editorForeground ?? UIColor.label
+        #endif
     }
 
     private var editorBackgroundColor: PlatformColor {
-        editorTheme?.editorBackground ?? .textBackgroundColor
+        #if os(macOS)
+        editorTheme?.editorBackground ?? NSColor.textBackgroundColor
+        #else
+        editorTheme?.editorBackground ?? UIColor.systemBackground
+        #endif
     }
 
     private var editorInsertionPointColor: PlatformColor {
-        editorTheme?.caretColor ?? .labelColor
+        #if os(macOS)
+        editorTheme?.caretColor ?? NSColor.labelColor
+        #else
+        editorTheme?.caretColor ?? UIColor.label
+        #endif
     }
 }
-
-// MARK: - Platform Color Helpers
-
-#if os(macOS)
-private extension PlatformColor {
-    static var labelColor: NSColor { .labelColor }
-    static var textBackgroundColor: NSColor { .textBackgroundColor }
-}
-#else
-private extension PlatformColor {
-    static var labelColor: UIColor { .label }
-    static var textBackgroundColor: UIColor { .systemBackground }
-}
-#endif

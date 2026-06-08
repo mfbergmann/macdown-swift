@@ -8,6 +8,7 @@ import UIKit
 #endif
 
 /// Provides syntax highlighting for the markdown editor using Highlightr.
+@MainActor
 @Observable
 final class MarkdownSyntaxHighlighter {
     private let highlightr: Highlightr?

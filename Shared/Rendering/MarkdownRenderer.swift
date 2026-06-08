@@ -33,14 +33,14 @@ public struct MarkdownRenderer: Sendable {
         }
     }
 
-    public struct RenderResult: Sendable {
+    public struct RenderResult: @unchecked Sendable {
         public let html: String
         public let frontMatter: [String: Any]?
         public let title: String?
 
         // frontMatter is [String: Any] which isn't Sendable, but we only
         // produce it from controlled YAML parsing. Mark as safe.
-        nonisolated(unsafe) static let empty = RenderResult(html: "", frontMatter: nil, title: nil)
+        static let empty = RenderResult(html: "", frontMatter: nil, title: nil)
     }
 
     public init() {

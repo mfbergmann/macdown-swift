@@ -11,7 +11,15 @@ let package = Package(
         .library(
             name: "MacDownCore",
             targets: ["MacDownCore"]
-        )
+        ),
+        .executable(
+            name: "MacDownSwift",
+            targets: ["MacDownMacOS"]
+        ),
+        .executable(
+            name: "MacDowniOS",
+            targets: ["MacDownIOS"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-cmark.git", from: "0.4.0"),
@@ -36,6 +44,16 @@ let package = Package(
                 .copy("Resources/Templates"),
                 .copy("Resources/Extensions"),
             ]
+        ),
+        .executableTarget(
+            name: "MacDownMacOS",
+            dependencies: ["MacDownCore"],
+            path: "macOS"
+        ),
+        .executableTarget(
+            name: "MacDownIOS",
+            dependencies: ["MacDownCore"],
+            path: "iOS"
         ),
         .testTarget(
             name: "MacDownTests",

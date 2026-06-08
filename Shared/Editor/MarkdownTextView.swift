@@ -29,7 +29,18 @@ struct MarkdownTextView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
 
-        let textView = MarkdownNSTextView()
+        // Create text storage, layout manager, and text container
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        
+        let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        textContainer.widthTracksTextView = true
+        layoutManager.addTextContainer(textContainer)
+
+        // Create text view with proper initialization
+        let textView = MarkdownNSTextView(frame: .zero, textContainer: textContainer)
+        textView.scrollsPastEnd = scrollsPastEnd
         textView.isEditable = isEditable
         textView.isSelectable = true
         textView.allowsUndo = true
@@ -49,7 +60,6 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
-        textView.textContainer?.widthTracksTextView = true
 
         // Line spacing
         let paragraphStyle = NSMutableParagraphStyle()
@@ -109,7 +119,7 @@ struct MarkdownTextView: NSViewRepresentable {
             parent.onTextChange?()
         }
 
-        @objc func scrollViewDidScroll(_ notification: Notification) {
+        @MainActor @objc func scrollViewDidScroll(_ notification: Notification) {
             guard let scrollView = textView?.enclosingScrollView else { return }
             let contentView = scrollView.contentView
             let documentView = scrollView.documentView!

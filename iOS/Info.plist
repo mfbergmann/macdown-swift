@@ -59,5 +59,15 @@
 			</dict>
 		</dict>
 	</array>
+	<key>CFBundleIdentifier</key>
+	<string>com.macdown.MacDownSwift-iOS</string>
+	<key>CFBundleName</key>
+	<string>MacDownSwift</string>
+	<key>CFBundleDisplayName</key>
+	<string>MacDownSwift</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>NSPrincipalClass</key>
+	<string>UIApplication</string>
 </dict>
 </plist>

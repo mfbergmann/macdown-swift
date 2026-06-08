@@ -78,17 +78,22 @@ struct PreviewWebView: NSViewRepresentable {
             webView.evaluateJavaScript(js)
         }
 
+        @MainActor
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-        ) {
+            preferences: WKWebpagePreferences
+        ) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
             if navigationAction.navigationType == .linkActivated,
                let url = navigationAction.request.url {
+                #if os(macOS)
                 NSWorkspace.shared.open(url)
-                decisionHandler(.cancel)
+                #else
+                await UIApplication.shared.open(url)
+                #endif
+                return (.cancel, preferences)
             } else {
-                decisionHandler(.allow)
+                return (.allow, preferences)
             }
         }
 

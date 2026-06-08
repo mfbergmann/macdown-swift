@@ -2,8 +2,8 @@ import Foundation
 import SwiftUI
 
 @Observable
-final class Preferences {
-    static let shared = Preferences()
+public final class Preferences {
+    nonisolated(unsafe) public static let shared = Preferences()
 
     // MARK: - General
 
@@ -247,7 +247,7 @@ final class Preferences {
 
     private let defaults = UserDefaults.standard
 
-    private init() {}
+    public init() {}
 }
 
 // MARK: - UserDefaults Helper

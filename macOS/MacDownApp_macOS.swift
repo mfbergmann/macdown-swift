@@ -1,4 +1,5 @@
 import SwiftUI
+import MacDownCore
 
 @main
 struct MacDownApp: App {
