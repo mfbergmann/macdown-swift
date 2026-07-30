@@ -65,9 +65,9 @@ works from editor-only mode and lays out to the page rather than the window.
 
 ## 3. Preview & theming polish
 - [x] Dark-mode preview that follows system appearance (and a manual toggle) — ships a **GitHub Dark** stylesheet paired with GitHub2; the editor highlight theme follows the same setting so both panes always match; print/PDF stays on white paper
-- [ ] Tighten scroll-sync accuracy on long/uneven documents
+- [ ] Tighten scroll-sync accuracy on long/uneven documents — currently maps editor scroll *fraction* to preview fraction, which drifts when content density differs (a long code block renders compactly, an image takes lots of preview height). Proper fix: emit `data-source-line` on block elements from the cmark AST and anchor on the topmost visible line. Needs watching on screen to tune, so left for a session with eyes on it.
 - [x] User custom CSS — drop `.css` files in Application Support/MacDown/Styles and they appear in the picker (bundled names win, so leftovers from the original MacDown can't hijack our themes)
-- [ ] Per-document front-matter driven options where sensible
+- [ ] Per-document front-matter driven options where sensible — needs a decision on *which* options (style? math? hard wrap?) before it's worth building
 
 ---
 
@@ -75,7 +75,7 @@ works from editor-only mode and lays out to the page rather than the window.
 - [ ] **Icon refinement** (cleanup of the current M↓ / Swift-arrow mark)
 - [x] About panel with credits (Tzu-ping Chung, Mou) and the third-party components actually bundled in the build
 - [x] First-run welcome document — written to Application Support and opened as a real file, so it also demonstrates the preview-first behaviour
-- [ ] Settings screen polish and grouping pass
+- [~] Settings screen polish and grouping pass — added Opening Documents, Appearance, Writing Modes, and light/dark theme pairs; a full visual pass is still worth doing
 
 ---
 
