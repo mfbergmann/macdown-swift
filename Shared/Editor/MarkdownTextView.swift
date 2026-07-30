@@ -29,6 +29,7 @@ struct MarkdownTextView: NSViewRepresentable {
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
     var writingModes: WritingModes
+    var documentURL: URL?
     var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
@@ -60,6 +61,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         let textView = MarkdownNSTextView(frame: .zero, textContainer: textContainer)
         textView.scrollsPastEnd = scrollsPastEnd
+        textView.documentURL = documentURL
         textView.isEditable = isEditable
         textView.isSelectable = true
         textView.allowsUndo = true
@@ -137,6 +139,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: horizontalInset, height: verticalInset)
         context.coordinator.behavior.options = behaviorOptions
         context.coordinator.writingModes = writingModes
+        textView.documentURL = documentURL
         context.coordinator.performJumpIfNeeded(jump, in: textView)
         context.coordinator.applyWritingModes(to: textView)
 
@@ -350,6 +353,125 @@ struct MarkdownTextView: NSViewRepresentable {
 class MarkdownNSTextView: NSTextView {
     var scrollsPastEnd = true
 
+    /// Where the document lives, so pasted images can be saved beside it.
+    /// Nil for an unsaved document, which has nowhere to put them yet.
+    var documentURL: URL?
+
+    // MARK: - Image Paste and Drop
+
+    /// Intercept image pastes and write them to the document's sidecar folder.
+    ///
+    /// This view is `isRichText` (the syntax highlighter needs attributed text),
+    /// so without this an image would paste as a text attachment — invisible in
+    /// the plain string we save, and silently lost. Turning it into a markdown
+    /// link is both the useful behaviour and the safe one.
+    override func paste(_ sender: Any?) {
+        if handleImages(from: NSPasteboard.general) { return }
+        super.pasteAsPlainText(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if handleImages(from: sender.draggingPasteboard) { return true }
+        return super.performDragOperation(sender)
+    }
+
+    /// Save any images on `pasteboard` next to the document and insert links.
+    /// Returns false if there were none, so normal handling can continue.
+    private func handleImages(from pasteboard: NSPasteboard) -> Bool {
+        let images = imagePayloads(from: pasteboard)
+        guard !images.isEmpty else { return false }
+
+        guard let documentURL else {
+            presentUnsavedDocumentAlert()
+            return true  // handled: pasting an attachment would be worse
+        }
+
+        let folder = ImageInsertion.assetsFolder(for: documentURL)
+        let folderName = ImageInsertion.assetsFolderName(for: documentURL)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+
+        var links: [String] = []
+        for payload in images {
+            let name = ImageInsertion.uniqueFilename(
+                base: payload.baseName, extension: payload.fileExtension, in: folder
+            )
+            let destination = folder.appendingPathComponent(name)
+            guard (try? payload.data.write(to: destination, options: .atomic)) != nil else { continue }
+            links.append(
+                ImageInsertion.markdownLink(
+                    fileName: name, folderName: folderName, altText: payload.altText
+                )
+            )
+        }
+        guard !links.isEmpty else { return false }
+
+        let markdown = links.joined(separator: "\n")
+        let range = selectedRange()
+        guard shouldChangeText(in: range, replacementString: markdown) else { return true }
+        textStorage?.replaceCharacters(in: range, with: markdown)
+        didChangeText()
+        setSelectedRange(NSRange(location: range.location + (markdown as NSString).length, length: 0))
+        return true
+    }
+
+    private struct ImagePayload {
+        var data: Data
+        var fileExtension: String
+        var baseName: String
+        var altText: String
+    }
+
+    private func imagePayloads(from pasteboard: NSPasteboard) -> [ImagePayload] {
+        // Dragged files first: they carry a real name and their original bytes,
+        // so we copy rather than re-encode and lose quality.
+        if let urls = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] {
+            let imageURLs = urls.filter {
+                ["png", "jpg", "jpeg", "gif", "heic", "webp", "tiff", "bmp", "svg"]
+                    .contains($0.pathExtension.lowercased())
+            }
+            if !imageURLs.isEmpty {
+                return imageURLs.compactMap { url -> ImagePayload? in
+                    guard let data = try? Data(contentsOf: url) else { return nil }
+                    let base = url.deletingPathExtension().lastPathComponent
+                    return ImagePayload(
+                        data: data,
+                        fileExtension: url.pathExtension.lowercased(),
+                        baseName: base,
+                        altText: base
+                    )
+                }
+            }
+        }
+
+        // Otherwise an image on the clipboard: normalise to PNG.
+        guard let image = NSImage(pasteboard: pasteboard),
+              let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:])
+        else { return [] }
+
+        return [
+            ImagePayload(
+                data: png,
+                fileExtension: "png",
+                baseName: ImageInsertion.defaultBaseName(date: Date()),
+                altText: ""
+            )
+        ]
+    }
+
+    private func presentUnsavedDocumentAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Save the document first"
+        alert.informativeText =
+            "Images are saved in a folder next to the document, so this one needs a home on disk before you can add them."
+        alert.addButton(withTitle: "OK")
+        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+    }
+
     override func setFrameSize(_ newSize: NSSize) {
         var adjustedSize = newSize
         if scrollsPastEnd, let scrollView = enclosingScrollView {
@@ -380,6 +502,7 @@ struct MarkdownTextView: UIViewRepresentable {
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
     var writingModes: WritingModes
+    var documentURL: URL?
     var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
@@ -463,6 +586,7 @@ struct MarkdownTextView: UIViewRepresentable {
         )
         context.coordinator.behavior.options = behaviorOptions
         context.coordinator.writingModes = writingModes
+        textView.documentURL = documentURL
         context.coordinator.performJumpIfNeeded(jump, in: textView)
         context.coordinator.applyWritingModes(to: textView)
     }

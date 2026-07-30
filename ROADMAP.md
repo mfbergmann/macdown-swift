@@ -53,7 +53,7 @@ works from editor-only mode and lays out to the page rather than the window.
 - [x] Auto-continue lists + smart renumbering — bullets, numbered (incrementing), task items (always unchecked), blockquotes; Return on an empty item ends the list
 - [x] Auto-pair brackets/quotes; wrap selection with pairs; type over a closing character
 - [x] Tab/indent handling, convert tabs→spaces; block indent/outdent across a multi-line selection
-- [ ] Paste/drag-drop images → save to a sidecar folder and insert a link
+- [x] Paste/drag-drop images → saved to a `<document>.assets` sidecar folder with a relative link inserted
 - [x] **Sidebar** (⌥⌘S): document **outline** navigator (jump to headings in both panes) *and* a folder file browser for the current document's directory
 - [x] Focus mode (⌃⌘F, dims all but the current paragraph) and typewriter mode (⌥⇧⌘T, keeps the caret centred)
 - [x] Command palette (⌘K) — fuzzy search over every view, format, and export command

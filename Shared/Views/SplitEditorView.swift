@@ -311,6 +311,7 @@ public struct SplitEditorView: View {
             scrollsPastEnd: preferences.editorScrollsPastEnd,
             behaviorOptions: EditorBehavior.Options(preferences: preferences),
             writingModes: writingModes,
+            documentURL: fileURL,
             jump: jump,
             onScroll: { fraction in
                 if preferences.editorSyncScrolling {
