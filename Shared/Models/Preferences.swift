@@ -305,6 +305,17 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: "htmlHighlightingThemeName") }
     }
 
+    /// Prism theme used when the resolved appearance is dark.
+    var htmlHighlightingThemeNameDark: String {
+        get { defaults.string(forKey: "htmlHighlightingThemeNameDark") ?? "prism-tomorrow" }
+        set { defaults.set(newValue, forKey: "htmlHighlightingThemeNameDark") }
+    }
+
+    /// The Prism theme for the given resolved appearance.
+    func htmlHighlightingThemeName(dark: Bool) -> String {
+        dark ? htmlHighlightingThemeNameDark : htmlHighlightingThemeName
+    }
+
     var htmlLineNumbers: Bool {
         get { defaults.bool(forKey: "htmlLineNumbers") }
         set { defaults.set(newValue, forKey: "htmlLineNumbers") }

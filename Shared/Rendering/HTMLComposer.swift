@@ -108,7 +108,10 @@ public struct HTMLComposer: Sendable {
 
         // Syntax highlighting via Prism
         if options.includeHighlighting && preferences.htmlSyntaxHighlighting {
-            if let prismCSS = loadPrismThemeCSS(named: preferences.htmlHighlightingThemeName) {
+            let prismTheme = preferences.htmlHighlightingThemeName(
+                dark: isDark && purpose != .print
+            )
+            if let prismCSS = loadPrismThemeCSS(named: prismTheme) {
                 styleTags.append(inlineStyle(prismCSS))
             }
             if let prismJS = loadPrismCoreJS() {

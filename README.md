@@ -104,10 +104,10 @@ and SwiftUI layers stay thin glue over those.
 
 Released under the **MIT License**, the same as the original MacDown. The original
 copyright — `Copyright (c) 2014 Tzu-ping Chung` — is preserved in
-`LICENSE/macdown.txt`, alongside full license texts for all third-party
-components in the `LICENSE/` directory.
+`LICENSE/macdown.txt`, alongside the full license texts for every third-party
+component this app actually ships, in the `LICENSE/` directory.
 
-The following editor themes and CSS files are extracted from [Mou](http://mouapp.com), courtesy of Chen Luo:
+The following editor themes and preview stylesheets come from [Mou](http://mouapp.com), courtesy of Chen Luo:
 
 * Mou Fresh Air / Fresh Air+
 * Mou Night / Night+
@@ -116,6 +116,8 @@ The following editor themes and CSS files are extracted from [Mou](http://mouapp
 * Writer / Writer+
 * Clearness / Clearness Dark
 * GitHub / GitHub2
+
+`GitHub Dark` is original to this project.
 
 ## Acknowledgements
 

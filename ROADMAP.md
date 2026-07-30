@@ -9,6 +9,13 @@ Status legend: `[ ]` planned · `[~]` partial/started · `[x]` done
 
 ---
 
+## 🧹 Housekeeping
+- [x] Removed the original Objective-C application, its Xcode project, CocoaPods/Bundler files, Travis + Transifex config, and the `Dependency/` submodules — 563 files. This is a rewrite in spirit; git history keeps the original if it's ever needed.
+- [x] Pruned `LICENSE/` to the components actually shipped, and added the missing ones (swift-cmark, Highlightr, highlight.js, Yams, swift-collections)
+- [x] **Vendored Prism** — it was an uninitialised git submodule, so preview code highlighting had never worked despite being on by default
+
+---
+
 ## ✅ Shipped (v0.1.0)
 - [x] Swift/SwiftUI rewrite, Apple Silicon native, macOS + iOS core
 - [x] GFM rendering (tables, task lists, strikethrough, autolinks, footnotes), MathJax, Mermaid
