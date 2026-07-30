@@ -28,6 +28,7 @@ struct MarkdownTextView: NSViewRepresentable {
     var isEditable: Bool
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
+    var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
 
@@ -133,6 +134,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         textView.textContainerInset = NSSize(width: horizontalInset, height: verticalInset)
         context.coordinator.behavior.options = behaviorOptions
+        context.coordinator.performJumpIfNeeded(jump, in: textView)
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = lineSpacing
@@ -205,6 +207,33 @@ struct MarkdownTextView: NSViewRepresentable {
 
             apply(edit, to: textView)
             return false
+        }
+
+        /// Scroll to a heading the sidebar selected, once per request token.
+        private var lastJumpToken: Int?
+
+        func performJumpIfNeeded(_ jump: HeadingJump?, in textView: NSTextView) {
+            guard let jump, jump.token != lastJumpToken else { return }
+            lastJumpToken = jump.token
+
+            let length = (textView.string as NSString).length
+            guard jump.range.location <= length else { return }
+            let range = NSRange(
+                location: jump.range.location,
+                length: min(jump.range.length, length - jump.range.location)
+            )
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            // Put the heading near the top rather than just barely on screen.
+            if let layoutManager = textView.layoutManager,
+               let container = textView.textContainer {
+                let rect = layoutManager.boundingRect(forGlyphRange: range, in: container)
+                let target = max(0, rect.minY - textView.textContainerInset.height)
+                textView.enclosingScrollView?.contentView.scroll(to: NSPoint(x: 0, y: target))
+                textView.enclosingScrollView?.reflectScrolledClipView(
+                    textView.enclosingScrollView!.contentView
+                )
+            }
         }
 
         /// Apply an edit through the undo-registering path so ⌘Z works normally.
@@ -287,6 +316,7 @@ struct MarkdownTextView: UIViewRepresentable {
     var isEditable: Bool
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
+    var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
 
@@ -368,6 +398,7 @@ struct MarkdownTextView: UIViewRepresentable {
             bottom: verticalInset, right: horizontalInset
         )
         context.coordinator.behavior.options = behaviorOptions
+        context.coordinator.performJumpIfNeeded(jump, in: textView)
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
@@ -411,6 +442,22 @@ struct MarkdownTextView: UIViewRepresentable {
             guard let edit else { return true }
             apply(edit, to: textView)
             return false
+        }
+
+        private var lastJumpToken: Int?
+
+        func performJumpIfNeeded(_ jump: HeadingJump?, in textView: UITextView) {
+            guard let jump, jump.token != lastJumpToken else { return }
+            lastJumpToken = jump.token
+
+            let length = (textView.text as NSString).length
+            guard jump.range.location <= length else { return }
+            let range = NSRange(
+                location: jump.range.location,
+                length: min(jump.range.length, length - jump.range.location)
+            )
+            textView.selectedRange = range
+            textView.scrollRangeToVisible(range)
         }
 
         /// Apply an edit through `replace(_:withText:)` so UIKit's undo stack stays intact.

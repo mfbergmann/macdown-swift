@@ -20,6 +20,9 @@ public extension Notification.Name {
     /// Object: `nil`. Shows the editor pane if hidden, hides it if shown.
     static let toggleEditor = Notification.Name("toggleEditor")
 
+    /// Object: `nil`. Shows or hides the outline/folder sidebar.
+    static let toggleSidebar = Notification.Name("toggleSidebar")
+
     /// Object: an `ExportCommand` raw value. Runs an export/print/copy action.
     static let exportDocument = Notification.Name("exportDocument")
 }

@@ -15,8 +15,10 @@ struct MarkdownRendererTests {
     @Test("Renders headings")
     func headings() {
         let result = renderer.render("# Heading 1\n## Heading 2")
-        #expect(result.html.contains("<h1>"))
-        #expect(result.html.contains("<h2>"))
+        // Headings carry an id and a document-order index for navigation.
+        #expect(result.html.contains("<h1 id=\"heading-1\""))
+        #expect(result.html.contains("<h2 id=\"heading-2\""))
+        #expect(result.html.contains(">Heading 1</h1>"))
     }
 
     @Test("Renders bold and italic")
@@ -81,7 +83,7 @@ struct MarkdownRendererTests {
         let result = renderer.render(md, options: opts)
         #expect(result.title == "My Document")
         #expect(!result.html.contains("---"))
-        #expect(result.html.contains("<h1>"))
+        #expect(result.html.contains("<h1 id=\"content\""))
     }
 
     @Test("Skips front matter when disabled")

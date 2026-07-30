@@ -8,6 +8,7 @@ struct PreviewWebView: NSViewRepresentable {
     let html: String
     let baseURL: URL?
     var scrollFraction: CGFloat
+    var jump: HeadingJump?
     var onScrollChange: ((CGFloat) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -39,6 +40,7 @@ struct PreviewWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.performJumpIfNeeded(jump, in: webView)
         // Only reload if HTML changed
         if context.coordinator.lastHTML != html {
             context.coordinator.lastHTML = html
@@ -68,7 +70,42 @@ struct PreviewWebView: NSViewRepresentable {
             self.parent = parent
         }
 
+        /// Scroll to a heading the sidebar selected, once per request token.
+        var lastJumpToken: Int?
+        /// A jump requested while the page was still loading, replayed on finish.
+        var pendingJump: HeadingJump?
+
+        func performJumpIfNeeded(_ jump: HeadingJump?, in webView: WKWebView) {
+            guard let jump, jump.token != lastJumpToken else { return }
+            lastJumpToken = jump.token
+            if webView.isLoading {
+                // The element does not exist yet; replay once the load finishes.
+                pendingJump = jump
+                return
+            }
+            scroll(to: jump, in: webView)
+        }
+
+        func scroll(to jump: HeadingJump, in webView: WKWebView) {
+            // Navigate by document-order index rather than slug, so this never
+            // depends on slug text agreeing between source and rendered HTML.
+            let js = """
+            (function() {
+                var el = document.querySelector('[data-heading-index="\(jump.headingIndex)"]');
+                if (el) { el.scrollIntoView({ block: 'start' }); }
+            })();
+            """
+            webView.evaluateJavaScript(js)
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // A jump takes priority over restoring the previous scroll position:
+            // the user just asked to be somewhere specific.
+            if let pending = pendingJump {
+                pendingJump = nil
+                scroll(to: pending, in: webView)
+                return
+            }
             // Restore scroll position after load
             let fraction = savedScrollFraction
             let js = """
@@ -115,6 +152,7 @@ struct PreviewWebView: UIViewRepresentable {
     let html: String
     let baseURL: URL?
     var scrollFraction: CGFloat
+    var jump: HeadingJump?
     var onScrollChange: ((CGFloat) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -135,6 +173,7 @@ struct PreviewWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.performJumpIfNeeded(jump, in: webView)
         if context.coordinator.lastHTML != html {
             context.coordinator.lastHTML = html
             webView.evaluateJavaScript("document.documentElement.scrollTop / Math.max(1, document.documentElement.scrollHeight - document.documentElement.clientHeight)") { result, _ in
@@ -154,7 +193,40 @@ struct PreviewWebView: UIViewRepresentable {
             self.parent = parent
         }
 
+        /// Scroll to a heading the sidebar selected, once per request token.
+        var lastJumpToken: Int?
+        /// A jump requested while the page was still loading, replayed on finish.
+        var pendingJump: HeadingJump?
+
+        func performJumpIfNeeded(_ jump: HeadingJump?, in webView: WKWebView) {
+            guard let jump, jump.token != lastJumpToken else { return }
+            lastJumpToken = jump.token
+            if webView.isLoading {
+                // The element does not exist yet; replay once the load finishes.
+                pendingJump = jump
+                return
+            }
+            scroll(to: jump, in: webView)
+        }
+
+        func scroll(to jump: HeadingJump, in webView: WKWebView) {
+            // Navigate by document-order index rather than slug, so this never
+            // depends on slug text agreeing between source and rendered HTML.
+            let js = """
+            (function() {
+                var el = document.querySelector('[data-heading-index="\(jump.headingIndex)"]');
+                if (el) { el.scrollIntoView({ block: 'start' }); }
+            })();
+            """
+            webView.evaluateJavaScript(js)
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if let pending = pendingJump {
+                pendingJump = nil
+                scroll(to: pending, in: webView)
+                return
+            }
             let fraction = savedScrollFraction
             let js = """
             document.documentElement.scrollTop = \(fraction) *

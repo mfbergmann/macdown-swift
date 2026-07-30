@@ -95,6 +95,13 @@ struct MacDownApp: App {
 
         CommandGroup(after: .sidebar) {
             Section {
+                Button("Show or Hide Sidebar") {
+                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+            }
+
+            Section {
                 Button("Editor Only") {
                     NotificationCenter.default.post(
                         name: .setViewMode, object: ViewMode.editorOnly.rawValue

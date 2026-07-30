@@ -34,6 +34,12 @@ public final class Preferences {
         set { defaults.set(newValue.rawValue, forKey: "openedFileViewMode") }
     }
 
+    /// Whether the outline/folder sidebar is showing.
+    var showsSidebar: Bool {
+        get { defaults.bool(forKey: "showsSidebar") }
+        set { defaults.set(newValue, forKey: "showsSidebar") }
+    }
+
     /// Remember how each individual file was last viewed and restore it on open.
     var remembersViewModePerFile: Bool {
         get { defaults.boolWithDefault(forKey: "remembersViewModePerFile", default: true) }

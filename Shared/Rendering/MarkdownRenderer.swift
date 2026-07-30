@@ -103,6 +103,10 @@ public struct MarkdownRenderer: Sendable {
         var html = String(cString: htmlPtr)
         free(htmlPtr)
 
+        // cmark emits bare <h1>…<h6> with no ids, so anchors — including the
+        // ones [TOC] generates — had nothing to link to. Add them.
+        html = addHeadingAnchors(to: html)
+
         // TOC replacement
         if options.renderTOC {
             let toc = generateTOC(from: html)
@@ -135,6 +139,52 @@ public struct MarkdownRenderer: Sendable {
 
         let yaml = try? Yams.load(yaml: yamlContent) as? [String: Any]
         return (remaining, yaml)
+    }
+
+    // MARK: - Heading Anchors
+
+    /// Give every heading a slug `id` and its document-order index.
+    ///
+    /// The slug is the shareable anchor (and what `[TOC]` links to). The index
+    /// is what the sidebar navigates by, so jumping to a heading never depends
+    /// on slug text matching between the markdown source and the rendered HTML.
+    private func addHeadingAnchors(to html: String) -> String {
+        let pattern = #"<h([1-6])>(.*?)</h\1>"#
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern, options: [.dotMatchesLineSeparators]
+        ) else { return html }
+
+        let ns = html as NSString
+        var slugger = DocumentOutline.Slugger()
+        var result = ""
+        var lastEnd = 0
+        var index = 0
+
+        for match in regex.matches(in: html, range: NSRange(location: 0, length: ns.length)) {
+            let level = ns.substring(with: match.range(at: 1))
+            let inner = ns.substring(with: match.range(at: 2))
+            let plain = inner
+                .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            let slug = slugger.slug(for: decodeEntities(plain))
+
+            result += ns.substring(with: NSRange(location: lastEnd, length: match.range.location - lastEnd))
+            result += "<h\(level) id=\"\(slug)\" data-heading-index=\"\(index)\">\(inner)</h\(level)>"
+            lastEnd = match.range.upperBound
+            index += 1
+        }
+        result += ns.substring(from: lastEnd)
+        return result
+    }
+
+    /// Undo the entity escaping cmark applies, so slugs are built from the
+    /// same text the outline parser sees in the source.
+    private func decodeEntities(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
     }
 
     // MARK: - TOC Generation

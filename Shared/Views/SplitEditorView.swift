@@ -17,6 +17,11 @@ public struct SplitEditorView: View {
     @State private var renderTask: Task<Void, Never>?
     @State private var viewMode: ViewMode
     @State private var editorOnRight = false
+    @State private var showsSidebar = Preferences.shared.showsSidebar
+    @State private var outline = DocumentOutline()
+    @State private var listing = FolderListing()
+    @State private var jump: HeadingJump?
+    @State private var jumpToken = 0
     #if os(macOS)
     @State private var exportCoordinator = ExportCoordinator()
     #endif
@@ -53,10 +58,52 @@ public struct SplitEditorView: View {
     #endif
 
     public var body: some View {
-        content
+        sidebarSplit
             .toolbar { toolbarContent }
             .modifier(DocumentLifecycle(view: self))
             .modifier(MenuCommands(view: self))
+    }
+
+    @ViewBuilder
+    private var sidebarSplit: some View {
+        #if os(macOS)
+        HSplitView {
+            if showsSidebar {
+                SidebarView(
+                    outline: outline,
+                    listing: listing,
+                    currentFile: fileURL,
+                    activeHeading: nil,
+                    onSelectHeading: jump(to:),
+                    onSelectFile: open(_:)
+                )
+                .frame(minWidth: 160, idealWidth: 220, maxWidth: 400)
+            }
+            content
+                .frame(minWidth: 320)
+        }
+        #else
+        content
+        #endif
+    }
+
+    // MARK: - Navigation
+
+    /// Scroll both panes to `heading`.
+    private func jump(to heading: Heading) {
+        jumpToken += 1
+        jump = HeadingJump(
+            token: jumpToken, headingIndex: heading.index, range: heading.range
+        )
+    }
+
+    /// Open another markdown file from the folder listing in its own window.
+    private func open(_ url: URL) {
+        #if os(macOS)
+        NSDocumentController.shared.openDocument(
+            withContentsOf: url, display: true
+        ) { _, _, _ in }
+        #endif
     }
 
     @ViewBuilder
@@ -85,6 +132,7 @@ public struct SplitEditorView: View {
                 .onAppear {
                     view.editorOnRight = view.preferences.editorOnRight
                     view.document.fileURL = view.fileURL
+                    view.listing = FolderListing.forDocument(at: view.fileURL)
                     view.renderMarkdown()
                 }
                 .onChange(of: view.document.text) { _, _ in
@@ -101,6 +149,7 @@ public struct SplitEditorView: View {
                     // A new document just got saved for the first time — start
                     // remembering it under its new home.
                     view.document.fileURL = newURL
+                    view.listing = FolderListing.forDocument(at: newURL)
                     view.rememberViewMode(view.viewMode)
                 }
         }
@@ -128,6 +177,11 @@ public struct SplitEditorView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .toggleEditor)) { _ in
                     guard view.isKeyWindow else { return }
                     view.viewMode = view.viewMode.togglingEditor()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.showsSidebar.toggle()
+                    view.preferences.showsSidebar = view.showsSidebar
                 }
                 .modifier(PlatformMenuCommands(view: view))
         }
@@ -223,6 +277,7 @@ public struct SplitEditorView: View {
             isEditable: true,
             scrollsPastEnd: preferences.editorScrollsPastEnd,
             behaviorOptions: EditorBehavior.Options(preferences: preferences),
+            jump: jump,
             onScroll: { fraction in
                 if preferences.editorSyncScrolling {
                     scrollSync.editorDidScroll(to: fraction)
@@ -244,6 +299,7 @@ public struct SplitEditorView: View {
             html: renderedHTML,
             baseURL: fileURL,
             scrollFraction: scrollSync.previewScrollFraction,
+            jump: jump,
             onScrollChange: { fraction in
                 if preferences.editorSyncScrolling {
                     scrollSync.previewDidScroll(to: fraction)
@@ -259,6 +315,18 @@ public struct SplitEditorView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        #if os(macOS)
+        ToolbarItem(placement: .navigation) {
+            Button {
+                showsSidebar.toggle()
+                preferences.showsSidebar = showsSidebar
+            } label: {
+                Image(systemName: "sidebar.leading")
+            }
+            .help("Show or hide the sidebar")
+        }
+        #endif
+
         if viewMode.showsEditor {
             ToolbarItemGroup {
                 ForEach(Self.quickFormatActions, id: \.self) { action in
@@ -375,6 +443,7 @@ public struct SplitEditorView: View {
     private func renderMarkdown() {
         let options = MarkdownRenderer.Options.from(preferences: preferences)
         let result = renderer.render(document.text, options: options)
+        outline = DocumentOutline.parse(document.text)
         renderedHTML = composer.compose(
             title: result.title,
             body: result.html,
