@@ -4,24 +4,103 @@ import Foundation
 /// with CSS styles, JavaScript extensions, and a document template.
 public struct HTMLComposer: Sendable {
 
+    /// What the composed HTML is for. Determines whether interactive scripts
+    /// are included and whether a print stylesheet is added.
+    public enum Purpose: Sendable {
+        /// The live on-screen preview: everything, including interactivity.
+        case preview
+        /// A standalone `.html` file the user will keep or share.
+        case export
+        /// Paper or PDF: adds a print stylesheet, drops interactivity.
+        case print
+    }
+
+    /// Which parts of the document to carry into an export.
+    ///
+    /// Everything is inlined rather than linked, so an exported file is
+    /// self-contained and keeps working after it's moved or emailed. The one
+    /// exception is MathJax, which loads from a CDN and therefore needs a
+    /// network connection to typeset.
+    public struct ExportOptions: Sendable {
+        public var includeStyles: Bool
+        public var includeHighlighting: Bool
+        public var includeMath: Bool
+        public var includeDiagrams: Bool
+
+        public init(
+            includeStyles: Bool = true,
+            includeHighlighting: Bool = true,
+            includeMath: Bool = true,
+            includeDiagrams: Bool = true
+        ) {
+            self.includeStyles = includeStyles
+            self.includeHighlighting = includeHighlighting
+            self.includeMath = includeMath
+            self.includeDiagrams = includeDiagrams
+        }
+
+        /// Body text only — no theme, no highlighting. Useful when pasting into
+        /// another document that brings its own styling.
+        public static let plain = ExportOptions(
+            includeStyles: false,
+            includeHighlighting: false,
+            includeMath: false,
+            includeDiagrams: false
+        )
+    }
+
+    /// Page geometry for PDF and print output.
+    public struct PageSetup: Sendable {
+        /// Page size in CSS units, e.g. `"letter"`, `"A4"`, `"letter landscape"`.
+        public var size: String
+        /// Page margin in CSS units, e.g. `"0.75in"`.
+        public var margin: String
+
+        public init(size: String = "letter", margin: String = "0.75in") {
+            self.size = size
+            self.margin = margin
+        }
+
+        public static let `default` = PageSetup()
+    }
+
     public init() {}
 
-    /// Compose a complete HTML document from rendered markdown body.
+    /// Compose the live preview document.
     public func compose(
         title: String?,
         body: String,
         preferences: Preferences
     ) -> String {
+        compose(
+            title: title,
+            body: body,
+            preferences: preferences,
+            purpose: .preview,
+            options: ExportOptions(),
+            pageSetup: .default
+        )
+    }
+
+    /// Compose a complete, self-contained HTML document.
+    public func compose(
+        title: String?,
+        body: String,
+        preferences: Preferences,
+        purpose: Purpose,
+        options: ExportOptions = ExportOptions(),
+        pageSetup: PageSetup = .default
+    ) -> String {
         var styleTags: [String] = []
         var scriptTags: [String] = []
 
         // Base preview stylesheet
-        if let css = loadStyleCSS(named: preferences.htmlStyleName) {
+        if options.includeStyles, let css = loadStyleCSS(named: preferences.htmlStyleName) {
             styleTags.append(inlineStyle(css))
         }
 
         // Syntax highlighting via Prism
-        if preferences.htmlSyntaxHighlighting {
+        if options.includeHighlighting && preferences.htmlSyntaxHighlighting {
             if let prismCSS = loadPrismThemeCSS(named: preferences.htmlHighlightingThemeName) {
                 styleTags.append(inlineStyle(prismCSS))
             }
@@ -40,7 +119,7 @@ public struct HTMLComposer: Sendable {
         }
 
         // MathJax
-        if preferences.htmlMathJax {
+        if options.includeMath && preferences.htmlMathJax {
             let mathjaxCDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
             scriptTags.append(externalScript(mathjaxCDN))
             if preferences.htmlMathJaxInlineDollar {
@@ -56,7 +135,7 @@ public struct HTMLComposer: Sendable {
         }
 
         // Mermaid
-        if preferences.htmlMermaid {
+        if options.includeDiagrams && preferences.htmlMermaid {
             if let mermaidJS = loadExtensionFile(named: "mermaid.min", ext: "js") {
                 scriptTags.append(inlineScript(mermaidJS))
             }
@@ -65,15 +144,19 @@ public struct HTMLComposer: Sendable {
             }
         }
 
-        // Task list interactivity
-        if preferences.htmlTaskList {
+        // Task list interactivity — only meaningful in the live preview, where
+        // toggling a checkbox writes back to the document.
+        if purpose == .preview && preferences.htmlTaskList {
             if let taskJS = loadExtensionFile(named: "tasklist", ext: "js") {
                 scriptTags.append(inlineScript(taskJS))
             }
         }
 
-        // Build the HTML document from template
-        let titleTag = title.map { "<title>\($0)</title>" } ?? ""
+        if purpose == .print {
+            styleTags.append(inlineStyle(Self.printCSS(pageSetup: pageSetup)))
+        }
+
+        let titleTag = title.map { "<title>\(escapeHTML($0))</title>" } ?? ""
         let styleBlock = styleTags.joined(separator: "\n")
         let scriptBlock = scriptTags.joined(separator: "\n")
 
@@ -94,7 +177,10 @@ public struct HTMLComposer: Sendable {
         """
     }
 
-    /// Compose HTML suitable for export (optionally without styles/scripts).
+    /// Compose HTML suitable for export.
+    ///
+    /// - Note: Retained for source compatibility; prefer
+    ///   ``compose(title:body:preferences:purpose:options:pageSetup:)``.
     public func composeForExport(
         title: String?,
         body: String,
@@ -102,44 +188,53 @@ public struct HTMLComposer: Sendable {
         includeStyles: Bool,
         includeHighlighting: Bool
     ) -> String {
-        let exportPrefs = preferences
-        // For export, we might want to adjust preferences
-        // but for simplicity, delegate to compose with filtered options
-        var styleTags: [String] = []
-        var scriptTags: [String] = []
+        compose(
+            title: title,
+            body: body,
+            preferences: preferences,
+            purpose: .export,
+            options: ExportOptions(
+                includeStyles: includeStyles,
+                includeHighlighting: includeHighlighting
+            )
+        )
+    }
 
-        if includeStyles {
-            if let css = loadStyleCSS(named: exportPrefs.htmlStyleName) {
-                styleTags.append(inlineStyle(css))
+    // MARK: - Print Stylesheet
+
+    /// Styles that only apply on paper: page geometry, a white canvas
+    /// regardless of the screen theme, and break rules that stop code blocks
+    /// and tables being sliced across pages.
+    static func printCSS(pageSetup: PageSetup) -> String {
+        """
+        @page {
+            size: \(pageSetup.size);
+            margin: \(pageSetup.margin);
+        }
+        @media print {
+            html, body {
+                background: #fff !important;
+                width: auto !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            pre, blockquote, table, figure, img, .mermaid {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            h1, h2, h3, h4, h5, h6 {
+                break-after: avoid;
+                page-break-after: avoid;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            img, table, pre {
+                max-width: 100% !important;
             }
         }
-
-        if includeHighlighting && exportPrefs.htmlSyntaxHighlighting {
-            if let prismCSS = loadPrismThemeCSS(named: exportPrefs.htmlHighlightingThemeName) {
-                styleTags.append(inlineStyle(prismCSS))
-            }
-            if let prismJS = loadPrismCoreJS() {
-                scriptTags.append(inlineScript(prismJS))
-            }
-        }
-
-        let titleTag = title.map { "<title>\($0)</title>" } ?? ""
-        let styleBlock = styleTags.joined(separator: "\n")
-        let scriptBlock = scriptTags.joined(separator: "\n")
-
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        \(titleTag)
-        \(styleBlock)
-        </head>
-        <body>
-        \(body)
-        \(scriptBlock)
-        </body>
-        </html>
         """
     }
 
@@ -189,6 +284,13 @@ public struct HTMLComposer: Sendable {
 
     private func externalScript(_ url: String) -> String {
         "<script src=\"\(url)\"></script>"
+    }
+
+    private func escapeHTML(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 
     // MARK: - Available Styles

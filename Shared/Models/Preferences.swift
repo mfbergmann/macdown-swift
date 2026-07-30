@@ -17,6 +17,29 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: "createFileForLinkTarget") }
     }
 
+    // MARK: - View Mode
+    //
+    // Reading comes first: opening an existing `.md` file should show you the
+    // rendered document, not a wall of syntax. Writing starts in the editor.
+
+    /// Mode a brand-new, unsaved document opens in.
+    var newDocumentViewMode: ViewMode {
+        get { viewMode(forKey: "newDocumentViewMode", default: .editorOnly) }
+        set { defaults.set(newValue.rawValue, forKey: "newDocumentViewMode") }
+    }
+
+    /// Mode an existing file opens in when there's no per-file memory of it.
+    var openedFileViewMode: ViewMode {
+        get { viewMode(forKey: "openedFileViewMode", default: .previewOnly) }
+        set { defaults.set(newValue.rawValue, forKey: "openedFileViewMode") }
+    }
+
+    /// Remember how each individual file was last viewed and restore it on open.
+    var remembersViewModePerFile: Bool {
+        get { defaults.boolWithDefault(forKey: "remembersViewModePerFile", default: true) }
+        set { defaults.set(newValue, forKey: "remembersViewModePerFile") }
+    }
+
     // MARK: - Markdown Extension Flags
 
     var extensionIntraEmphasis: Bool {
@@ -247,9 +270,18 @@ public final class Preferences {
 
     // MARK: - Private
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
 
-    public init() {}
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    private func viewMode(forKey key: String, default defaultValue: ViewMode) -> ViewMode {
+        guard let raw = defaults.string(forKey: key),
+              let mode = ViewMode(rawValue: raw)
+        else { return defaultValue }
+        return mode
+    }
 }
 
 // MARK: - UserDefaults Helper

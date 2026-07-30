@@ -38,9 +38,37 @@ public struct SettingsView: View {
 
 struct GeneralSettingsTab: View {
     private let prefs = Preferences.shared
+    @State private var rememberedFileCount = ViewModeStore.shared.count
 
     var body: some View {
         Form {
+            Section("Opening Documents") {
+                Picker("New documents open in", selection: viewModeBinding(\.newDocumentViewMode)) {
+                    ForEach(ViewMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                Picker("Existing files open in", selection: viewModeBinding(\.openedFileViewMode)) {
+                    ForEach(ViewMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                Toggle("Remember how each file was last viewed", isOn: binding(\.remembersViewModePerFile))
+                if prefs.remembersViewModePerFile {
+                    HStack {
+                        Text("\(rememberedFileCount) file\(rememberedFileCount == 1 ? "" : "s") remembered")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                        Spacer()
+                        Button("Forget All") {
+                            ViewModeStore.shared.removeAll()
+                            rememberedFileCount = 0
+                        }
+                        .disabled(rememberedFileCount == 0)
+                    }
+                }
+            }
+
             Section("Behavior") {
                 Toggle("Suppress untitled document on launch", isOn: binding(\.suppressesUntitledDocumentOnLaunch))
                 Toggle("Create file for link targets", isOn: binding(\.createFileForLinkTarget))
@@ -48,6 +76,7 @@ struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { rememberedFileCount = ViewModeStore.shared.count }
         #if os(macOS)
         .padding()
         #else
@@ -56,6 +85,12 @@ struct GeneralSettingsTab: View {
     }
 
     private func binding(_ keyPath: ReferenceWritableKeyPath<Preferences, Bool>) -> Binding<Bool> {
+        Binding(get: { prefs[keyPath: keyPath] }, set: { prefs[keyPath: keyPath] = $0 })
+    }
+
+    private func viewModeBinding(
+        _ keyPath: ReferenceWritableKeyPath<Preferences, ViewMode>
+    ) -> Binding<ViewMode> {
         Binding(get: { prefs[keyPath: keyPath] }, set: { prefs[keyPath: keyPath] = $0 })
     }
 }

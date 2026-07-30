@@ -59,6 +59,9 @@ shopt -u nullglob
 # App icon
 iconutil -c icns "$ROOT/macOS/AppIcon.iconset" -o "$CONTENTS/Resources/AppIcon.icns"
 
+# Document icon — what Finder shows for .md files once MacDown handles them.
+iconutil -c icns "$ROOT/macOS/DocumentIcon.iconset" -o "$CONTENTS/Resources/DocumentIcon.icns"
+
 # Info.plist — start from the macOS source plist, then patch identity/version.
 PLIST="$CONTENTS/Info.plist"
 cp "$ROOT/macOS/Info.plist" "$PLIST"

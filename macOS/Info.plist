@@ -13,6 +13,8 @@
 				<string>mkd</string>
 				<string>mkdn</string>
 			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>DocumentIcon</string>
 			<key>CFBundleTypeName</key>
 			<string>Markdown Document</string>
 			<key>CFBundleTypeRole</key>
@@ -35,6 +37,8 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Markdown Document</string>
+			<key>UTTypeIconFile</key>
+			<string>DocumentIcon</string>
 			<key>UTTypeIdentifier</key>
 			<string>net.daringfireball.markdown</string>
 			<key>UTTypeTagSpecification</key>

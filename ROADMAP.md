@@ -20,21 +20,30 @@ Status legend: `[ ]` planned · `[~]` partial/started · `[x]` done
 
 ## 1. Next up (high value, aligned with the north star)
 
+### Reading-first behavior (do this first — highest value per line of code)
+- [x] **Preview-first defaults** — an *existing* file opens in preview mode so you can just read it; a *new* document opens in the editor
+- [x] **Per-file view mode memory** — remember how each file was last viewed and restore it on open (LRU-capped at 200 files; "Forget All" in Settings)
+- [x] Persist the current view mode across launches (today `viewMode` in `SplitEditorView` resets every time)
+
 ### Export (the big one)
-- [ ] **Export to PDF** — render the preview `WKWebView` to paginated PDF (`createPDF`), with page size/margins and a print stylesheet
-- [ ] **Export to HTML** — wire a UI onto the existing `composeForExport` (self-contained vs. linked assets toggle)
-- [ ] **Print** support (`NSPrintOperation` via the web view)
-- [ ] **Copy as HTML** / **Copy as Rich Text** to clipboard
+- [x] **Export to PDF** — paginated PDF via `WKWebView.pdf(configuration:)` with page size/margins and a print stylesheet
+- [x] **Export to HTML** — self-contained document; all CSS/JS inlined
+- [x] **Export to DOCX** — rendered HTML → `NSAttributedString` → `.officeOpenXML`
+- [x] **Print** support (`NSPrintOperation` via the web view, honouring the user's page setup)
+- [x] **Copy as HTML** / **Copy as Rich Text** to clipboard
+
+Export renders in an *offscreen* web view rather than the visible preview, so it
+works from editor-only mode and lays out to the page rather than the window.
 
 ### Formatting toolbar
-- [ ] Toolbar + menu actions for: bold, italic, strikethrough, inline code, code block, H1–H3, bullet/numbered list, task item, blockquote, link, image, horizontal rule, table
-- [ ] Smart toggling (apply/remove around selection; wrap empty selection with placeholder)
-- [ ] Reuse/extend the existing `insertMarkdownFormatting` notification path; add the missing actions
+- [x] Toolbar + menu actions for: bold, italic, strikethrough, inline code, code block, H1–H3, bullet/numbered list, task item, blockquote, link, image, horizontal rule, table
+- [x] Smart toggling (apply/remove around selection; wrap empty selection with placeholder)
+- [x] Reuse/extend the existing `insertMarkdownFormatting` notification path; add the missing actions
 
 ### "Default `.md` editor" system integration
-- [ ] Verify/strengthen UTI + document-type registration so macOS offers MacDown as a handler and it can be **Set as Default** for `.md`/`.markdown`/`.mdown`/`.mkd`
-- [ ] A **document icon** for `.md` files in Finder
-- [ ] Restore last session / recent documents; sensible new-doc behavior
+- [x] Verify/strengthen UTI + document-type registration so macOS offers MacDown as a handler and it can be **Set as Default** for `.md`/`.markdown`/`.mdown`/`.mkd`
+- [x] A **document icon** for `.md` files in Finder (`scripts/make-doc-icon.swift`)
+- [~] Restore last session / recent documents; sensible new-doc behavior — Open Recent and window restoration come free from `DocumentGroup`; new-doc behavior done
 - [ ] (Stretch) Quick Look preview extension for Markdown files
 
 ---
@@ -45,8 +54,12 @@ Status legend: `[ ]` planned · `[~]` partial/started · `[x]` done
 - [ ] Auto-pair brackets/quotes; wrap selection with pairs (pref exists)
 - [ ] Tab/indent handling, convert tabs→spaces (pref exists)
 - [ ] Paste/drag-drop images → save to a sidecar folder and insert a link
-- [ ] Document **outline / TOC** navigator (jump to headings)
+- [ ] **Sidebar**: document **outline / TOC** navigator (jump to headings) *and* a folder file browser for the current document's directory
 - [ ] Optional focus/typewriter mode (iA Writer-style), distraction-free toggle
+- [ ] Command palette (fuzzy search over all commands)
+
+> Explicitly **not** doing: prose linting / weasel-word / filler-word highlighting.
+> Interesting, but it's the feature sprawl the north star warns against.
 
 ---
 
@@ -68,7 +81,8 @@ Status legend: `[ ]` planned · `[~]` partial/started · `[x]` done
 
 ## 5. Distribution & ops
 - [ ] Add GitHub Actions signing secrets so CI cuts signed+notarized releases on tag push (see `RELEASING.md`)
-- [ ] In-app update check (e.g. Sparkle) for the non-App-Store build
+- [ ] **In-app update check against the GitHub Releases API** — poll `/releases/latest`, compare versions, offer the download. No Sparkle: less machinery, and it matches how we already ship.
+- [ ] **Ship a `.dmg`** installer alongside the current `.zip`
 - [ ] (Deferred) Mac App Store: requires a sandboxed second build flavor — revisit later
 - [ ] Homebrew Cask once releases are automated
 

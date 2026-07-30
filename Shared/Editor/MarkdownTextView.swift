@@ -96,6 +96,13 @@ struct MarkdownTextView: NSViewRepresentable {
         )
         scrollView.contentView.postsBoundsChangedNotifications = true
 
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.applyFormatting(_:)),
+            name: .insertMarkdownFormatting,
+            object: nil
+        )
+
         return scrollView
     }
 
@@ -133,16 +140,46 @@ struct MarkdownTextView: NSViewRepresentable {
         var parent: MarkdownTextView
         weak var textView: MarkdownNSTextView?
         var themeName: String
+        private let formatter = MarkdownFormatter()
 
         init(_ parent: MarkdownTextView) {
             self.parent = parent
             self.themeName = parent.highlightThemeName
         }
 
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             parent.onTextChange?()
+        }
+
+        /// Formatting commands are broadcast to every window; only the frontmost
+        /// window's editor should act on one.
+        @MainActor @objc func applyFormatting(_ notification: Notification) {
+            guard let textView,
+                  textView.window?.isKeyWindow == true,
+                  textView.isEditable,
+                  let raw = notification.object as? String,
+                  let action = MarkdownAction(rawValue: raw)
+            else { return }
+
+            let edit = formatter.apply(
+                action, to: textView.string, selection: textView.selectedRange()
+            )
+
+            // Break coalescing so the formatting lands as its own undo step
+            // rather than merging into whatever the user was typing.
+            textView.breakUndoCoalescing()
+            guard textView.shouldChangeText(in: edit.range, replacementString: edit.replacement)
+            else { return }
+            textView.textStorage?.replaceCharacters(in: edit.range, with: edit.replacement)
+            textView.didChangeText()
+            textView.setSelectedRange(edit.selectedRange)
+            textView.breakUndoCoalescing()
         }
 
         @MainActor @objc func scrollViewDidScroll(_ notification: Notification) {
@@ -235,6 +272,14 @@ struct MarkdownTextView: UIViewRepresentable {
         }
         textView.keyboardDismissMode = .interactive
 
+        context.coordinator.textView = textView
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.applyFormatting(_:)),
+            name: .insertMarkdownFormatting,
+            object: nil
+        )
+
         return textView
     }
 
@@ -265,16 +310,45 @@ struct MarkdownTextView: UIViewRepresentable {
 
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: MarkdownTextView
+        weak var textView: UITextView?
         var themeName: String
+        private let formatter = MarkdownFormatter()
 
         init(_ parent: MarkdownTextView) {
             self.parent = parent
             self.themeName = parent.highlightThemeName
         }
 
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text
             parent.onTextChange?()
+        }
+
+        @MainActor @objc func applyFormatting(_ notification: Notification) {
+            guard let textView,
+                  textView.window?.isKeyWindow == true,
+                  textView.isEditable,
+                  let raw = notification.object as? String,
+                  let action = MarkdownAction(rawValue: raw)
+            else { return }
+
+            let edit = formatter.apply(
+                action, to: textView.text, selection: textView.selectedRange
+            )
+
+            guard let start = textView.position(from: textView.beginningOfDocument, offset: edit.range.location),
+                  let end = textView.position(from: start, offset: edit.range.length),
+                  let textRange = textView.textRange(from: start, to: end)
+            else { return }
+
+            // Going through `replace(_:withText:)` keeps UIKit's undo stack intact.
+            textView.replace(textRange, withText: edit.replacement)
+            textView.selectedRange = edit.selectedRange
+            textViewDidChange(textView)
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {

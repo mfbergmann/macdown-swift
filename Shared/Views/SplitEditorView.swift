@@ -1,51 +1,167 @@
+import Combine
 import SwiftUI
 
-/// The main split view containing the markdown editor and HTML preview side by side.
+/// The main document view: a markdown editor and an HTML preview, shown
+/// side by side or one at a time depending on the current `ViewMode`.
 public struct SplitEditorView: View {
     @Bindable var document: MarkdownDocument
 
-    public init(document: MarkdownDocument) {
-        self.document = document
-    }
+    /// Where this document lives on disk, or `nil` for a new unsaved document.
+    /// Supplied by the `DocumentGroup`; the source of truth for per-file state.
+    private let fileURL: URL?
+
     @State private var renderer = MarkdownRenderer()
     @State private var composer = HTMLComposer()
     @State private var scrollSync = ScrollSync()
     @State private var renderedHTML: String = ""
     @State private var renderTask: Task<Void, Never>?
+    @State private var viewMode: ViewMode
+    @State private var editorOnRight = false
+    #if os(macOS)
+    @State private var exportCoordinator = ExportCoordinator()
+    #endif
 
     let preferences = Preferences.shared
 
-    enum ViewMode: String, CaseIterable {
-        case split = "Split"
-        case editorOnly = "Editor"
-        case previewOnly = "Preview"
+    public init(document: MarkdownDocument, fileURL: URL? = nil) {
+        self.document = document
+        self.fileURL = fileURL
+        _viewMode = State(
+            initialValue: ViewMode.resolvedForOpening(
+                fileURL: fileURL,
+                preferences: .shared,
+                store: .shared
+            )
+        )
     }
 
-    @State private var viewMode: ViewMode = .split
-    @State private var editorOnRight = false
+    // Menu commands are broadcast to every open window, so each window only
+    // acts on them while it's the key window.
+    #if os(macOS)
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var isKeyWindow: Bool { controlActiveState == .key }
+    #else
+    private var isKeyWindow: Bool { true }
+    #endif
 
     public var body: some View {
-        ZStack {
-            switch viewMode {
-            case .split:
-                splitView
-            case .editorOnly:
-                editorView
-            case .previewOnly:
-                previewView
-            }
-        }
-        .toolbar {
-            toolbarContent
-        }
-        .onAppear {
-            editorOnRight = preferences.editorOnRight
-            renderMarkdown()
-        }
-        .onChange(of: document.text) { _, _ in
-            scheduleRender()
+        content
+            .toolbar { toolbarContent }
+            .modifier(DocumentLifecycle(view: self))
+            .modifier(MenuCommands(view: self))
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch viewMode {
+        case .split:
+            splitView
+        case .editorOnly:
+            editorView
+        case .previewOnly:
+            previewView
         }
     }
+
+    // MARK: - Lifecycle
+
+    /// Setup, re-rendering, and remembering how this file was viewed.
+    ///
+    /// Kept in a `ViewModifier` rather than chained onto `body` so the type
+    /// checker has a much smaller expression to solve.
+    private struct DocumentLifecycle: ViewModifier {
+        let view: SplitEditorView
+
+        func body(content: Content) -> some View {
+            content
+                .onAppear {
+                    view.editorOnRight = view.preferences.editorOnRight
+                    view.document.fileURL = view.fileURL
+                    view.renderMarkdown()
+                }
+                .onChange(of: view.document.text) { _, _ in
+                    view.scheduleRender()
+                }
+                .onChange(of: view.viewMode) { _, newMode in
+                    view.rememberViewMode(newMode)
+                }
+                .onChange(of: view.fileURL) { _, newURL in
+                    // A new document just got saved for the first time — start
+                    // remembering it under its new home.
+                    view.document.fileURL = newURL
+                    view.rememberViewMode(view.viewMode)
+                }
+        }
+    }
+
+    // MARK: - Menu Commands
+
+    /// Menu and keyboard commands arrive as broadcast notifications; each
+    /// window ignores them unless it's the key window.
+    private struct MenuCommands: ViewModifier {
+        let view: SplitEditorView
+
+        func body(content: Content) -> some View {
+            content
+                .onReceive(NotificationCenter.default.publisher(for: .setViewMode)) { note in
+                    guard view.isKeyWindow,
+                          let raw = note.object as? String,
+                          let mode = ViewMode(rawValue: raw) else { return }
+                    view.viewMode = mode
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.viewMode = view.viewMode.togglingPreview()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .toggleEditor)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.viewMode = view.viewMode.togglingEditor()
+                }
+                .modifier(PlatformMenuCommands(view: view))
+        }
+    }
+
+    #if os(macOS)
+    private struct PlatformMenuCommands: ViewModifier {
+        let view: SplitEditorView
+
+        func body(content: Content) -> some View {
+            content
+                .onReceive(NotificationCenter.default.publisher(for: .exportDocument)) { note in
+                    guard view.isKeyWindow,
+                          let raw = note.object as? String,
+                          let command = ExportCommand(rawValue: raw) else { return }
+                    Task { await view.exportCoordinator.run(command, content: view.exportContent()) }
+                }
+        }
+    }
+    #else
+    private struct PlatformMenuCommands: ViewModifier {
+        let view: SplitEditorView
+        func body(content: Content) -> some View { content }
+    }
+    #endif
+
+    // MARK: - Export
+
+    #if os(macOS)
+    /// Re-render the document for export rather than reusing `renderedHTML`,
+    /// which carries preview-only scripts and reflects the on-screen theme.
+    private func exportContent() -> ExportContent {
+        let options = MarkdownRenderer.Options.from(preferences: preferences)
+        let result = renderer.render(document.text, options: options)
+        return ExportContent(
+            title: result.title ?? document.title,
+            body: result.html,
+            baseURL: fileURL,
+            suggestedFilename: fileURL?.deletingPathExtension().lastPathComponent
+                ?? result.title
+                ?? document.title,
+            preferences: preferences,
+            composer: composer
+        )
+    }
+    #endif
 
     // MARK: - Split View
 
@@ -113,7 +229,7 @@ public struct SplitEditorView: View {
     private var previewView: some View {
         PreviewWebView(
             html: renderedHTML,
-            baseURL: document.fileURL,
+            baseURL: fileURL,
             scrollFraction: scrollSync.previewScrollFraction,
             onScrollChange: { fraction in
                 if preferences.editorSyncScrolling {
@@ -130,10 +246,30 @@ public struct SplitEditorView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        if viewMode.showsEditor {
+            ToolbarItemGroup {
+                ForEach(Self.quickFormatActions, id: \.self) { action in
+                    Button {
+                        post(action)
+                    } label: {
+                        Label(action.menuTitle, systemImage: action.systemImage)
+                    }
+                    .help(action.menuTitle)
+                }
+
+                Menu {
+                    formatMenuSections
+                } label: {
+                    Label("Format", systemImage: "textformat")
+                }
+                .help("Insert markdown formatting")
+            }
+        }
+
         ToolbarItemGroup {
             Picker("View", selection: $viewMode) {
                 ForEach(ViewMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
+                    Text(mode.displayName).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
@@ -145,6 +281,7 @@ public struct SplitEditorView: View {
                 Image(systemName: "arrow.left.arrow.right")
             }
             .help("Swap editor and preview positions")
+            .disabled(viewMode != .split)
 
             if preferences.editorShowWordCount {
                 Text(wordCountText)
@@ -152,6 +289,61 @@ public struct SplitEditorView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// The handful of actions worth a permanent toolbar button; everything
+    /// else lives one click deeper in the Format menu.
+    private static let quickFormatActions: [MarkdownAction] = [
+        .bold, .italic, .inlineCode, .link,
+    ]
+
+    @ViewBuilder
+    private var formatMenuSections: some View {
+        Section {
+            menuButton(.bold)
+            menuButton(.italic)
+            menuButton(.strikethrough)
+            menuButton(.inlineCode)
+        }
+        Section {
+            menuButton(.heading1)
+            menuButton(.heading2)
+            menuButton(.heading3)
+        }
+        Section {
+            menuButton(.bulletList)
+            menuButton(.numberedList)
+            menuButton(.taskItem)
+            menuButton(.blockquote)
+        }
+        Section {
+            menuButton(.link)
+            menuButton(.image)
+            menuButton(.codeBlock)
+            menuButton(.table)
+            menuButton(.horizontalRule)
+        }
+    }
+
+    private func menuButton(_ action: MarkdownAction) -> some View {
+        Button {
+            post(action)
+        } label: {
+            Label(action.menuTitle, systemImage: action.systemImage)
+        }
+    }
+
+    private func post(_ action: MarkdownAction) {
+        NotificationCenter.default.post(
+            name: .insertMarkdownFormatting, object: action.rawValue
+        )
+    }
+
+    // MARK: - View Mode Memory
+
+    private func rememberViewMode(_ mode: ViewMode) {
+        guard preferences.remembersViewModePerFile, let fileURL else { return }
+        ViewModeStore.shared.setMode(mode, for: fileURL)
     }
 
     // MARK: - Rendering
