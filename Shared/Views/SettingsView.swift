@@ -276,6 +276,19 @@ struct RenderingSettingsTab: View {
                         Text(style).tag(style)
                     }
                 }
+                #if os(macOS)
+                HStack {
+                    Text("Drop your own .css files in the Styles folder to add them here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Styles Folder") {
+                        if let directory = UserResources.ensureStylesDirectory() {
+                            NSWorkspace.shared.open(directory)
+                        }
+                    }
+                }
+                #endif
             }
 
             Section("Features") {

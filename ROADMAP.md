@@ -66,7 +66,7 @@ works from editor-only mode and lays out to the page rather than the window.
 ## 3. Preview & theming polish
 - [x] Dark-mode preview that follows system appearance (and a manual toggle) — ships a **GitHub Dark** stylesheet paired with GitHub2; the editor highlight theme follows the same setting so both panes always match; print/PDF stays on white paper
 - [ ] Tighten scroll-sync accuracy on long/uneven documents
-- [ ] Preview style picker polish; allow user custom CSS
+- [x] User custom CSS — drop `.css` files in Application Support/MacDown/Styles and they appear in the picker (bundled names win, so leftovers from the original MacDown can't hijack our themes)
 - [ ] Per-document front-matter driven options where sensible
 
 ---
@@ -74,7 +74,7 @@ works from editor-only mode and lays out to the page rather than the window.
 ## 4. App polish
 - [ ] **Icon refinement** (cleanup of the current M↓ / Swift-arrow mark)
 - [x] About panel with credits (Tzu-ping Chung, Mou) and the third-party components actually bundled in the build
-- [ ] First-run sample document / light onboarding
+- [x] First-run welcome document — written to Application Support and opened as a real file, so it also demonstrates the preview-first behaviour
 - [ ] Settings screen polish and grouping pass
 
 ---

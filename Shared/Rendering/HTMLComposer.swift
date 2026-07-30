@@ -247,8 +247,17 @@ public struct HTMLComposer: Sendable {
 
     // MARK: - Resource Loading
 
+    /// Bundled stylesheets win over user ones of the same name.
+    ///
+    /// The obvious precedence would be the other way round, but the original
+    /// Objective-C MacDown used this same Application Support folder, so many
+    /// installs already contain its copies of `GitHub2.css` and friends.
+    /// Preferring the bundle means we render with our own themes rather than
+    /// silently picking up a decade-old file the user has forgotten about.
+    /// A custom stylesheet just needs a name we don't already ship.
     private func loadStyleCSS(named name: String) -> String? {
         loadResourceFile(name: name, ext: "css", subdirectory: "Styles")
+            ?? UserResources.customStyleCSS(named: name)
     }
 
     private func loadPrismThemeCSS(named name: String) -> String? {
@@ -302,13 +311,19 @@ public struct HTMLComposer: Sendable {
 
     // MARK: - Available Styles
 
+    /// Bundled styles plus any the user has dropped into their Styles folder.
     public static func availablePreviewStyles() -> [String] {
-        guard let url = Bundle.module.url(forResource: "Styles", withExtension: nil),
-              let contents = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-        else { return [] }
-        return contents
-            .filter { $0.pathExtension == "css" }
-            .map { $0.deletingPathExtension().lastPathComponent }
-            .sorted()
+        let bundled: [String] = {
+            guard let url = Bundle.module.url(forResource: "Styles", withExtension: nil),
+                  let contents = try? FileManager.default.contentsOfDirectory(
+                      at: url, includingPropertiesForKeys: nil
+                  )
+            else { return [] }
+            return contents
+                .filter { $0.pathExtension == "css" }
+                .map { $0.deletingPathExtension().lastPathComponent }
+        }()
+
+        return Set(bundled + UserResources.customStyleNames()).sorted()
     }
 }

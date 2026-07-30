@@ -1,8 +1,17 @@
 import SwiftUI
 import MacDownCore
 
+/// Hosts launch-time work that has no SwiftUI equivalent.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        FirstRun.presentWelcomeIfNeeded()
+    }
+}
+
 @main
 struct MacDownApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         DocumentGroup(newDocument: { MarkdownDocument() }) { file in
             SplitEditorView(document: file.document, fileURL: file.fileURL)
