@@ -27,6 +27,7 @@ struct MarkdownTextView: NSViewRepresentable {
     var verticalInset: CGFloat
     var isEditable: Bool
     var scrollsPastEnd: Bool
+    var behaviorOptions: EditorBehavior.Options
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
 
@@ -85,6 +86,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.string = text
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
+        context.coordinator.behavior.options = behaviorOptions
 
         scrollView.documentView = textView
 
@@ -130,6 +132,7 @@ struct MarkdownTextView: NSViewRepresentable {
         }
 
         textView.textContainerInset = NSSize(width: horizontalInset, height: verticalInset)
+        context.coordinator.behavior.options = behaviorOptions
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = lineSpacing
@@ -141,6 +144,7 @@ struct MarkdownTextView: NSViewRepresentable {
         weak var textView: MarkdownNSTextView?
         var themeName: String
         private let formatter = MarkdownFormatter()
+        var behavior = EditorBehavior()
 
         init(_ parent: MarkdownTextView) {
             self.parent = parent
@@ -155,6 +159,61 @@ struct MarkdownTextView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             parent.onTextChange?()
+        }
+
+        // MARK: - Typing Behaviors
+
+        /// Intercept Return and Tab so lists continue themselves and Tab indents.
+        func textView(
+            _ textView: NSTextView,
+            doCommandBy commandSelector: Selector
+        ) -> Bool {
+            let edit: EditorBehavior.Edit?
+            switch commandSelector {
+            case #selector(NSResponder.insertNewline(_:)):
+                edit = behavior.newlineEdit(in: textView.string, selection: textView.selectedRange())
+            case #selector(NSResponder.insertTab(_:)):
+                edit = behavior.tabEdit(
+                    in: textView.string, selection: textView.selectedRange(), outdent: false
+                )
+            case #selector(NSResponder.insertBacktab(_:)):
+                edit = behavior.tabEdit(
+                    in: textView.string, selection: textView.selectedRange(), outdent: true
+                )
+            default:
+                return false
+            }
+
+            guard let edit else { return false }  // let the text view handle it normally
+            apply(edit, to: textView)
+            return true
+        }
+
+        /// Intercept single-character insertions for auto-pairing.
+        func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedCharRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            guard let replacementString,
+                  let edit = behavior.insertionEdit(
+                      for: replacementString,
+                      in: textView.string,
+                      selection: affectedCharRange
+                  )
+            else { return true }
+
+            apply(edit, to: textView)
+            return false
+        }
+
+        /// Apply an edit through the undo-registering path so ⌘Z works normally.
+        private func apply(_ edit: EditorBehavior.Edit, to textView: NSTextView) {
+            guard textView.shouldChangeText(in: edit.range, replacementString: edit.replacement)
+            else { return }
+            textView.textStorage?.replaceCharacters(in: edit.range, with: edit.replacement)
+            textView.didChangeText()
+            textView.setSelectedRange(edit.selectedRange)
         }
 
         /// Formatting commands are broadcast to every window; only the frontmost
@@ -227,6 +286,7 @@ struct MarkdownTextView: UIViewRepresentable {
     var verticalInset: CGFloat
     var isEditable: Bool
     var scrollsPastEnd: Bool
+    var behaviorOptions: EditorBehavior.Options
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
 
@@ -273,6 +333,7 @@ struct MarkdownTextView: UIViewRepresentable {
         textView.keyboardDismissMode = .interactive
 
         context.coordinator.textView = textView
+        context.coordinator.behavior.options = behaviorOptions
         NotificationCenter.default.addObserver(
             context.coordinator,
             selector: #selector(Coordinator.applyFormatting(_:)),
@@ -306,6 +367,7 @@ struct MarkdownTextView: UIViewRepresentable {
             top: verticalInset, left: horizontalInset,
             bottom: verticalInset, right: horizontalInset
         )
+        context.coordinator.behavior.options = behaviorOptions
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
@@ -313,6 +375,7 @@ struct MarkdownTextView: UIViewRepresentable {
         weak var textView: UITextView?
         var themeName: String
         private let formatter = MarkdownFormatter()
+        var behavior = EditorBehavior()
 
         init(_ parent: MarkdownTextView) {
             self.parent = parent
@@ -328,6 +391,42 @@ struct MarkdownTextView: UIViewRepresentable {
             parent.onTextChange?()
         }
 
+        /// On iOS every insertion — Return, Tab, and ordinary characters —
+        /// arrives here, so all three typing behaviors hang off this one hook.
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText text: String
+        ) -> Bool {
+            let edit: EditorBehavior.Edit?
+            switch text {
+            case "\n":
+                edit = behavior.newlineEdit(in: textView.text, selection: range)
+            case "\t":
+                edit = behavior.tabEdit(in: textView.text, selection: range, outdent: false)
+            default:
+                edit = behavior.insertionEdit(for: text, in: textView.text, selection: range)
+            }
+
+            guard let edit else { return true }
+            apply(edit, to: textView)
+            return false
+        }
+
+        /// Apply an edit through `replace(_:withText:)` so UIKit's undo stack stays intact.
+        func apply(_ edit: EditorBehavior.Edit, to textView: UITextView) {
+            guard let start = textView.position(
+                    from: textView.beginningOfDocument, offset: edit.range.location
+                  ),
+                  let end = textView.position(from: start, offset: edit.range.length),
+                  let textRange = textView.textRange(from: start, to: end)
+            else { return }
+
+            textView.replace(textRange, withText: edit.replacement)
+            textView.selectedRange = edit.selectedRange
+            textViewDidChange(textView)
+        }
+
         @MainActor @objc func applyFormatting(_ notification: Notification) {
             guard let textView,
                   textView.window?.isKeyWindow == true,
@@ -340,15 +439,7 @@ struct MarkdownTextView: UIViewRepresentable {
                 action, to: textView.text, selection: textView.selectedRange
             )
 
-            guard let start = textView.position(from: textView.beginningOfDocument, offset: edit.range.location),
-                  let end = textView.position(from: start, offset: edit.range.length),
-                  let textRange = textView.textRange(from: start, to: end)
-            else { return }
-
-            // Going through `replace(_:withText:)` keeps UIKit's undo stack intact.
-            textView.replace(textRange, withText: edit.replacement)
-            textView.selectedRange = edit.selectedRange
-            textViewDidChange(textView)
+            apply(edit, to: textView)
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {

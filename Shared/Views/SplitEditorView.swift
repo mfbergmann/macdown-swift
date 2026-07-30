@@ -210,6 +210,7 @@ public struct SplitEditorView: View {
             verticalInset: preferences.editorVerticalInset,
             isEditable: true,
             scrollsPastEnd: preferences.editorScrollsPastEnd,
+            behaviorOptions: EditorBehavior.Options(preferences: preferences),
             onScroll: { fraction in
                 if preferences.editorSyncScrolling {
                     scrollSync.editorDidScroll(to: fraction)

@@ -49,10 +49,10 @@ works from editor-only mode and lays out to the page rather than the window.
 ---
 
 ## 2. Editing quality (fast, frictionless)
-- [ ] Find & Replace — confirm the native find bar works; add replace UX
-- [ ] Auto-continue lists + smart renumbering (prefs exist; wire them up)
-- [ ] Auto-pair brackets/quotes; wrap selection with pairs (pref exists)
-- [ ] Tab/indent handling, convert tabs→spaces (pref exists)
+- [x] Find & Replace — Find menu wired to the editor's native find bar (⌘F, ⌥⌘F, ⌘G, ⇧⌘G, ⌘E)
+- [x] Auto-continue lists + smart renumbering — bullets, numbered (incrementing), task items (always unchecked), blockquotes; Return on an empty item ends the list
+- [x] Auto-pair brackets/quotes; wrap selection with pairs; type over a closing character
+- [x] Tab/indent handling, convert tabs→spaces; block indent/outdent across a multi-line selection
 - [ ] Paste/drag-drop images → save to a sidecar folder and insert a link
 - [ ] **Sidebar**: document **outline / TOC** navigator (jump to headings) *and* a folder file browser for the current document's directory
 - [ ] Optional focus/typewriter mode (iA Writer-style), distraction-free toggle

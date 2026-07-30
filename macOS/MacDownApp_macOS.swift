@@ -43,6 +43,24 @@ struct MacDownApp: App {
             }
         }
 
+        // The editor's NSTextView already has a find bar (`usesFindBar`); these
+        // items are what actually reach it, since SwiftUI's stock Edit menu has
+        // no Find entries.
+        CommandGroup(after: .textEditing) {
+            Section {
+                Button("Find…") { textFinder(.showFindInterface) }
+                    .keyboardShortcut("f", modifiers: .command)
+                Button("Find and Replace…") { textFinder(.showReplaceInterface) }
+                    .keyboardShortcut("f", modifiers: [.command, .option])
+                Button("Find Next") { textFinder(.nextMatch) }
+                    .keyboardShortcut("g", modifiers: .command)
+                Button("Find Previous") { textFinder(.previousMatch) }
+                    .keyboardShortcut("g", modifiers: [.command, .shift])
+                Button("Use Selection for Find") { textFinder(.setSearchString) }
+                    .keyboardShortcut("e", modifiers: .command)
+            }
+        }
+
         CommandGroup(after: .textFormatting) {
             Section {
                 formatButton(.bold, "b", .command)
@@ -116,6 +134,18 @@ struct MacDownApp: App {
     /// Menu commands are broadcast; the frontmost document window acts on them.
     private func post(_ command: ExportCommand) {
         NotificationCenter.default.post(name: .exportDocument, object: command.rawValue)
+    }
+
+    /// Send a find-bar action to whichever text view is first responder.
+    ///
+    /// `performTextFinderAction:` reads the action out of the sender's tag, so
+    /// we hand it a throwaway menu item carrying the one we want.
+    private func textFinder(_ action: NSTextFinder.Action) {
+        let item = NSMenuItem()
+        item.tag = action.rawValue
+        NSApp.sendAction(
+            #selector(NSTextView.performTextFinderAction(_:)), to: nil, from: item
+        )
     }
 
     private func formatButton(
