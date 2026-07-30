@@ -95,11 +95,25 @@ SIGN_IDENTITY="Developer ID Application: Your Name (ABCDE12345)" \
 NOTARY_PROFILE="macdown-notary" \
 ./scripts/build-app.sh
 
-# 3. Zip and upload to a GitHub release
+# 3. Build a drag-to-install disk image
+NOTARY_PROFILE="macdown-notary" ./scripts/build-dmg.sh
+
+# 4. Zip and upload both to a GitHub release
 cd dist
 ditto -c -k --keepParent "MacDown.app" "MacDown.app.zip"
-gh release create v0.1.0 MacDown.app.zip --generate-notes
+gh release create v0.1.0 MacDown.app.zip MacDown-0.1.0.dmg --generate-notes
 ```
+
+`build-dmg.sh` rebuilds the app unless you pass `SKIP_BUILD=1`, takes its
+version from the built bundle so the two can't disagree, and signs (and, with
+`NOTARY_PROFILE`, notarizes and staples) the image itself as well as the app
+inside it.
+
+> **The release tag matters.** The in-app update check compares the running
+> build's `CFBundleShortVersionString` against the newest non-draft,
+> non-prerelease GitHub release, so the tag must be a semantic version like
+> `v0.2.0`. Mark betas as *pre-release* on GitHub and they won't be offered to
+> people on a stable build.
 
 ---
 

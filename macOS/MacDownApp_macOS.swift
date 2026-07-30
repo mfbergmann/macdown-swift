@@ -22,6 +22,12 @@ struct MacDownApp: App {
 
     @CommandsBuilder
     func macOSCommands() -> some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") {
+                UpdatePresenter.shared.checkForUpdates()
+            }
+        }
+
         CommandGroup(after: .saveItem) {
             Section {
                 Button(ExportCommand.html.menuTitle) { post(.html) }

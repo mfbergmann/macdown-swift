@@ -81,8 +81,8 @@ works from editor-only mode and lays out to the page rather than the window.
 
 ## 5. Distribution & ops
 - [ ] Add GitHub Actions signing secrets so CI cuts signed+notarized releases on tag push (see `RELEASING.md`)
-- [ ] **In-app update check against the GitHub Releases API** — poll `/releases/latest`, compare versions, offer the download. No Sparkle: less machinery, and it matches how we already ship.
-- [ ] **Ship a `.dmg`** installer alongside the current `.zip`
+- [x] **In-app update check against the GitHub Releases API** — “Check for Updates…” in the app menu; compares semantic versions numerically, skips drafts and pre-releases. No Sparkle.
+- [x] **Ship a `.dmg`** installer alongside the current `.zip` (`scripts/build-dmg.sh`, signed and notarizable)
 - [ ] (Deferred) Mac App Store: requires a sandboxed second build flavor — revisit later
 - [ ] Homebrew Cask once releases are automated
 
