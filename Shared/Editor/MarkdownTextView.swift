@@ -28,6 +28,7 @@ struct MarkdownTextView: NSViewRepresentable {
     var isEditable: Bool
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
+    var writingModes: WritingModes
     var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
@@ -88,6 +89,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
         context.coordinator.behavior.options = behaviorOptions
+        context.coordinator.writingModes = writingModes
 
         scrollView.documentView = textView
 
@@ -134,7 +136,9 @@ struct MarkdownTextView: NSViewRepresentable {
 
         textView.textContainerInset = NSSize(width: horizontalInset, height: verticalInset)
         context.coordinator.behavior.options = behaviorOptions
+        context.coordinator.writingModes = writingModes
         context.coordinator.performJumpIfNeeded(jump, in: textView)
+        context.coordinator.applyWritingModes(to: textView)
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = lineSpacing
@@ -161,6 +165,8 @@ struct MarkdownTextView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             parent.onTextChange?()
+            applyWritingModes(to: textView)
+            centreCaretIfNeeded(in: textView)
         }
 
         // MARK: - Typing Behaviors
@@ -207,6 +213,63 @@ struct MarkdownTextView: NSViewRepresentable {
 
             apply(edit, to: textView)
             return false
+        }
+
+        var writingModes = WritingModes()
+
+        /// Focus mode dims via layout-manager temporary attributes, which are
+        /// presentation-only — they never touch the text storage, so they can't
+        /// end up in the saved file or in undo.
+        func applyWritingModes(to textView: NSTextView) {
+            guard let layoutManager = textView.layoutManager else { return }
+            let full = NSRange(location: 0, length: (textView.string as NSString).length)
+
+            guard writingModes.focus else {
+                layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: full)
+                return
+            }
+
+            let lit = FocusRange.paragraph(in: textView.string, selection: textView.selectedRange())
+            layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: full)
+
+            let dimmed = NSColor.secondaryLabelColor.withAlphaComponent(0.35)
+            for range in [
+                NSRange(location: 0, length: lit.location),
+                NSRange(
+                    location: lit.upperBound,
+                    length: max(0, full.length - lit.upperBound)
+                ),
+            ] where range.length > 0 {
+                layoutManager.addTemporaryAttribute(
+                    .foregroundColor, value: dimmed, forCharacterRange: range
+                )
+            }
+        }
+
+        /// Keep the caret vertically centred in the visible area.
+        func centreCaretIfNeeded(in textView: NSTextView) {
+            guard writingModes.typewriter,
+                  let scrollView = textView.enclosingScrollView,
+                  let layoutManager = textView.layoutManager,
+                  let container = textView.textContainer
+            else { return }
+
+            let caret = layoutManager.boundingRect(
+                forGlyphRange: textView.selectedRange(), in: container
+            )
+            let visibleHeight = scrollView.contentView.bounds.height
+            let target = caret.midY + textView.textContainerInset.height - visibleHeight / 2
+            let maxOffset = max(0, textView.frame.height - visibleHeight)
+            let clamped = min(max(0, target), maxOffset)
+
+            scrollView.contentView.scroll(to: NSPoint(x: 0, y: clamped))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            applyWritingModes(to: textView)
+            centreCaretIfNeeded(in: textView)
         }
 
         /// Scroll to a heading the sidebar selected, once per request token.
@@ -316,6 +379,7 @@ struct MarkdownTextView: UIViewRepresentable {
     var isEditable: Bool
     var scrollsPastEnd: Bool
     var behaviorOptions: EditorBehavior.Options
+    var writingModes: WritingModes
     var jump: HeadingJump?
     var onScroll: ((CGFloat) -> Void)?
     var onTextChange: (() -> Void)?
@@ -398,7 +462,9 @@ struct MarkdownTextView: UIViewRepresentable {
             bottom: verticalInset, right: horizontalInset
         )
         context.coordinator.behavior.options = behaviorOptions
+        context.coordinator.writingModes = writingModes
         context.coordinator.performJumpIfNeeded(jump, in: textView)
+        context.coordinator.applyWritingModes(to: textView)
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
@@ -407,6 +473,7 @@ struct MarkdownTextView: UIViewRepresentable {
         var themeName: String
         private let formatter = MarkdownFormatter()
         var behavior = EditorBehavior()
+        var writingModes = WritingModes()
 
         init(_ parent: MarkdownTextView) {
             self.parent = parent

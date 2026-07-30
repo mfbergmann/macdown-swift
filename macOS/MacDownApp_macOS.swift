@@ -22,7 +22,10 @@ struct MacDownApp: App {
 
     @CommandsBuilder
     func macOSCommands() -> some Commands {
-        CommandGroup(after: .appInfo) {
+        CommandGroup(replacing: .appInfo) {
+            Button("About MacDown") {
+                AboutPanel.show()
+            }
             Button("Check for Updates…") {
                 UpdatePresenter.shared.checkForUpdates()
             }
@@ -128,6 +131,18 @@ struct MacDownApp: App {
                     )
                 }
                 .keyboardShortcut("3", modifiers: .command)
+            }
+
+            Section {
+                Button("Focus Mode") {
+                    NotificationCenter.default.post(name: .toggleFocusMode, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: [.command, .control])
+
+                Button("Typewriter Mode") {
+                    NotificationCenter.default.post(name: .toggleTypewriterMode, object: nil)
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift, .option])
             }
 
             Section {

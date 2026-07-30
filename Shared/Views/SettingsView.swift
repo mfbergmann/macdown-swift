@@ -144,6 +144,17 @@ struct EditorSettingsTab: View {
                 }
             }
 
+            Section("Writing Modes") {
+                Toggle("Focus mode", isOn: binding(\.focusMode))
+                Text("Dims everything except the paragraph you're writing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle("Typewriter mode", isOn: binding(\.typewriterMode))
+                Text("Keeps the caret vertically centred as you type.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Behavior") {
                 Toggle("Auto-increment numbered lists", isOn: binding(\.editorAutoIncrementNumberedLists))
                 Toggle("Convert tabs to spaces", isOn: binding(\.editorConvertTabs))

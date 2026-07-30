@@ -55,7 +55,7 @@ works from editor-only mode and lays out to the page rather than the window.
 - [x] Tab/indent handling, convert tabs→spaces; block indent/outdent across a multi-line selection
 - [ ] Paste/drag-drop images → save to a sidecar folder and insert a link
 - [x] **Sidebar** (⌥⌘S): document **outline** navigator (jump to headings in both panes) *and* a folder file browser for the current document's directory
-- [ ] Optional focus/typewriter mode (iA Writer-style), distraction-free toggle
+- [x] Focus mode (⌃⌘F, dims all but the current paragraph) and typewriter mode (⌥⇧⌘T, keeps the caret centred)
 - [ ] Command palette (fuzzy search over all commands)
 
 > Explicitly **not** doing: prose linting / weasel-word / filler-word highlighting.
@@ -73,7 +73,7 @@ works from editor-only mode and lays out to the page rather than the window.
 
 ## 4. App polish
 - [ ] **Icon refinement** (cleanup of the current M↓ / Swift-arrow mark)
-- [ ] About panel with credits (Tzu-ping Chung, Mou) and bundled third-party licenses
+- [x] About panel with credits (Tzu-ping Chung, Mou) and the third-party components actually bundled in the build
 - [ ] First-run sample document / light onboarding
 - [ ] Settings screen polish and grouping pass
 

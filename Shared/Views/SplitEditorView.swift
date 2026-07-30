@@ -22,6 +22,7 @@ public struct SplitEditorView: View {
     @State private var listing = FolderListing()
     @State private var jump: HeadingJump?
     @State private var jumpToken = 0
+    @State private var writingModes = WritingModes(preferences: .shared)
     #if os(macOS)
     @State private var exportCoordinator = ExportCoordinator()
     #endif
@@ -183,6 +184,16 @@ public struct SplitEditorView: View {
                     view.showsSidebar.toggle()
                     view.preferences.showsSidebar = view.showsSidebar
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .toggleFocusMode)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.writingModes.focus.toggle()
+                    view.preferences.focusMode = view.writingModes.focus
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .toggleTypewriterMode)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.writingModes.typewriter.toggle()
+                    view.preferences.typewriterMode = view.writingModes.typewriter
+                }
                 .modifier(PlatformMenuCommands(view: view))
         }
     }
@@ -277,6 +288,7 @@ public struct SplitEditorView: View {
             isEditable: true,
             scrollsPastEnd: preferences.editorScrollsPastEnd,
             behaviorOptions: EditorBehavior.Options(preferences: preferences),
+            writingModes: writingModes,
             jump: jump,
             onScroll: { fraction in
                 if preferences.editorSyncScrolling {

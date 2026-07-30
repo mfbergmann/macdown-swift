@@ -34,6 +34,18 @@ public final class Preferences {
         set { defaults.set(newValue.rawValue, forKey: "openedFileViewMode") }
     }
 
+    /// Dim everything except the paragraph being written.
+    var focusMode: Bool {
+        get { defaults.bool(forKey: "focusMode") }
+        set { defaults.set(newValue, forKey: "focusMode") }
+    }
+
+    /// Keep the caret vertically centred as you type.
+    var typewriterMode: Bool {
+        get { defaults.bool(forKey: "typewriterMode") }
+        set { defaults.set(newValue, forKey: "typewriterMode") }
+    }
+
     /// Whether the outline/folder sidebar is showing.
     var showsSidebar: Bool {
         get { defaults.bool(forKey: "showsSidebar") }

@@ -23,6 +23,12 @@ public extension Notification.Name {
     /// Object: `nil`. Shows or hides the outline/folder sidebar.
     static let toggleSidebar = Notification.Name("toggleSidebar")
 
+    /// Object: `nil`. Dims everything but the paragraph being written.
+    static let toggleFocusMode = Notification.Name("toggleFocusMode")
+
+    /// Object: `nil`. Keeps the caret vertically centred.
+    static let toggleTypewriterMode = Notification.Name("toggleTypewriterMode")
+
     /// Object: an `ExportCommand` raw value. Runs an export/print/copy action.
     static let exportDocument = Notification.Name("exportDocument")
 }
