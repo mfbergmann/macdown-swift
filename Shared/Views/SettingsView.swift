@@ -113,7 +113,12 @@ struct EditorSettingsTab: View {
             }
 
             Section("Theme") {
-                Picker("Editor Theme", selection: editorStyleBinding) {
+                Picker("Light theme", selection: editorStyleBinding) {
+                    ForEach(MarkdownSyntaxHighlighter.availableThemes, id: \.self) { theme in
+                        Text(theme).tag(theme)
+                    }
+                }
+                Picker("Dark theme", selection: editorStyleDarkBinding) {
                     ForEach(MarkdownSyntaxHighlighter.availableThemes, id: \.self) { theme in
                         Text(theme).tag(theme)
                     }
@@ -187,6 +192,10 @@ struct EditorSettingsTab: View {
     private var editorStyleBinding: Binding<String> {
         Binding(get: { prefs.editorStyleName }, set: { prefs.editorStyleName = $0 })
     }
+
+    private var editorStyleDarkBinding: Binding<String> {
+        Binding(get: { prefs.editorStyleNameDark }, set: { prefs.editorStyleNameDark = $0 })
+    }
 }
 
 // MARK: - Markdown
@@ -234,8 +243,24 @@ struct RenderingSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Preview appearance", selection: appearanceBinding) {
+                    ForEach(PreviewAppearance.allCases, id: \.self) { appearance in
+                        Text(appearance.displayName).tag(appearance)
+                    }
+                }
+                Text("The editor theme follows the same setting, so both panes always match.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Preview Style") {
-                Picker("CSS Theme", selection: htmlStyleBinding) {
+                Picker("Light theme", selection: htmlStyleBinding) {
+                    ForEach(HTMLComposer.availablePreviewStyles(), id: \.self) { style in
+                        Text(style).tag(style)
+                    }
+                }
+                Picker("Dark theme", selection: htmlStyleDarkBinding) {
                     ForEach(HTMLComposer.availablePreviewStyles(), id: \.self) { style in
                         Text(style).tag(style)
                     }
@@ -279,6 +304,14 @@ struct RenderingSettingsTab: View {
 
     private var htmlStyleBinding: Binding<String> {
         Binding(get: { prefs.htmlStyleName }, set: { prefs.htmlStyleName = $0 })
+    }
+
+    private var htmlStyleDarkBinding: Binding<String> {
+        Binding(get: { prefs.htmlStyleNameDark }, set: { prefs.htmlStyleNameDark = $0 })
+    }
+
+    private var appearanceBinding: Binding<PreviewAppearance> {
+        Binding(get: { prefs.previewAppearance }, set: { prefs.previewAppearance = $0 })
     }
 
     private var highlightThemeBinding: Binding<String> {

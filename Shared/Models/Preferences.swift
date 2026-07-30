@@ -154,6 +154,12 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: "editorStyleName") }
     }
 
+    /// Editor highlight theme used when the resolved appearance is dark.
+    var editorStyleNameDark: String {
+        get { defaults.string(forKey: "editorStyleNameDark") ?? "atom-one-dark" }
+        set { defaults.set(newValue, forKey: "editorStyleNameDark") }
+    }
+
     var editorHorizontalInset: CGFloat {
         get {
             let val = defaults.double(forKey: "editorHorizontalInset")
@@ -216,6 +222,34 @@ public final class Preferences {
     var htmlStyleName: String {
         get { defaults.string(forKey: "htmlStyleName") ?? "GitHub2" }
         set { defaults.set(newValue, forKey: "htmlStyleName") }
+    }
+
+    /// Preview stylesheet used when the resolved appearance is dark.
+    var htmlStyleNameDark: String {
+        get { defaults.string(forKey: "htmlStyleNameDark") ?? "GitHub Dark" }
+        set { defaults.set(newValue, forKey: "htmlStyleNameDark") }
+    }
+
+    /// Whether the preview follows the system appearance or is pinned.
+    var previewAppearance: PreviewAppearance {
+        get {
+            guard let raw = defaults.string(forKey: "previewAppearance"),
+                  let value = PreviewAppearance(rawValue: raw)
+            else { return .system }
+            return value
+        }
+        set { defaults.set(newValue.rawValue, forKey: "previewAppearance") }
+    }
+
+    /// The preview stylesheet for the given resolved appearance.
+    func htmlStyleName(dark: Bool) -> String {
+        dark ? htmlStyleNameDark : htmlStyleName
+    }
+
+    /// The editor highlight theme for the given resolved appearance, so the
+    /// two panes never disagree about whether it's dark.
+    func editorStyleName(dark: Bool) -> String {
+        dark ? editorStyleNameDark : editorStyleName
     }
 
     var htmlDetectFrontMatter: Bool {

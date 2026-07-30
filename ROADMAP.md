@@ -64,7 +64,7 @@ works from editor-only mode and lays out to the page rather than the window.
 ---
 
 ## 3. Preview & theming polish
-- [ ] Dark-mode preview that follows system appearance (and a manual toggle)
+- [x] Dark-mode preview that follows system appearance (and a manual toggle) — ships a **GitHub Dark** stylesheet paired with GitHub2; the editor highlight theme follows the same setting so both panes always match; print/PDF stays on white paper
 - [ ] Tighten scroll-sync accuracy on long/uneven documents
 - [ ] Preview style picker polish; allow user custom CSS
 - [ ] Per-document front-matter driven options where sensible

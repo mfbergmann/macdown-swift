@@ -35,6 +35,14 @@ public struct SplitEditorView: View {
         )
     }
 
+    /// The system's current light/dark setting for this window.
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Whether the preview and editor should use their dark themes.
+    private var isDark: Bool {
+        preferences.previewAppearance.isDark(systemIsDark: colorScheme == .dark)
+    }
+
     // Menu commands are broadcast to every open window, so each window only
     // acts on them while it's the key window.
     #if os(macOS)
@@ -81,6 +89,10 @@ public struct SplitEditorView: View {
                 }
                 .onChange(of: view.document.text) { _, _ in
                     view.scheduleRender()
+                }
+                .onChange(of: view.isDark) { _, _ in
+                    // Appearance flipped: re-render so the preview swaps stylesheets.
+                    view.renderMarkdown()
                 }
                 .onChange(of: view.viewMode) { _, newMode in
                     view.rememberViewMode(newMode)
@@ -204,7 +216,7 @@ public struct SplitEditorView: View {
         MarkdownTextView(
             text: $document.text,
             font: editorFont,
-            highlightThemeName: preferences.editorStyleName,
+            highlightThemeName: preferences.editorStyleName(dark: isDark),
             lineSpacing: preferences.editorLineSpacing,
             horizontalInset: preferences.editorHorizontalInset,
             verticalInset: preferences.editorVerticalInset,
@@ -366,7 +378,8 @@ public struct SplitEditorView: View {
         renderedHTML = composer.compose(
             title: result.title,
             body: result.html,
-            preferences: preferences
+            preferences: preferences,
+            isDark: isDark
         )
     }
 

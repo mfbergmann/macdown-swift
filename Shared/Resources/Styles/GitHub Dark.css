@@ -1,0 +1,165 @@
+/*
+ * GitHub Dark — the dark counterpart to GitHub2.
+ *
+ * Mirrors GitHub2's element coverage and metrics so switching between light
+ * and dark only changes colour, never layout. Palette follows GitHub's own
+ * dark theme.
+ */
+
+body {
+  font-family: Helvetica, arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 30px;
+  color: #e6edf3;
+  background-color: #0d1117;
+  -webkit-font-smoothing: antialiased; }
+
+body > *:first-child {
+  margin-top: 0 !important; }
+body > *:last-child {
+  margin-bottom: 0 !important; }
+
+a {
+  color: #4493f8;
+  text-decoration: none; }
+a:hover {
+  text-decoration: underline; }
+a.absent {
+  color: #f85149; }
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 20px 0 10px;
+  padding: 0;
+  font-weight: 600;
+  color: #e6edf3;
+  cursor: text;
+  position: relative; }
+
+h1 {
+  font-size: 28px;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #30363d; }
+h2 {
+  font-size: 24px;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #30363d; }
+h3 { font-size: 18px; }
+h4 { font-size: 16px; }
+h5 { font-size: 14px; }
+h6 { font-size: 14px; color: #8b949e; }
+
+h1 tt, h1 code, h2 tt, h2 code, h3 tt, h3 code,
+h4 tt, h4 code, h5 tt, h5 code, h6 tt, h6 code {
+  font-size: inherit; }
+
+p, blockquote, ul, ol, dl, li, table, pre {
+  margin: 15px 0; }
+
+hr {
+  height: 1px;
+  padding: 0;
+  margin: 24px 0;
+  background-color: #30363d;
+  border: 0; }
+
+ul, ol {
+  padding-left: 30px; }
+ul :first-child, ol :first-child {
+  margin-top: 0; }
+ul :last-child, ol :last-child {
+  margin-bottom: 0; }
+
+dl { padding: 0; }
+dl dt {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: italic;
+  padding: 0;
+  margin: 15px 0 5px; }
+dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px; }
+
+blockquote {
+  border-left: 4px solid #3d444d;
+  padding: 0 15px;
+  color: #8b949e; }
+blockquote > :first-child { margin-top: 0; }
+blockquote > :last-child { margin-bottom: 0; }
+
+table {
+  border-collapse: collapse;
+  display: block;
+  width: 100%;
+  overflow: auto; }
+table th {
+  font-weight: 600; }
+table th, table td {
+  border: 1px solid #30363d;
+  padding: 6px 13px; }
+table tr {
+  background-color: #0d1117;
+  border-top: 1px solid #30363d; }
+table tr:nth-child(2n) {
+  background-color: #151b23; }
+
+img {
+  max-width: 100%; }
+
+code, tt {
+  margin: 0 2px;
+  padding: 0.2em 0.4em;
+  white-space: nowrap;
+  border-radius: 6px;
+  background-color: #6e768166;
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 85%; }
+
+pre > code {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: none;
+  background: transparent; }
+
+pre {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  font-size: 85%;
+  line-height: 1.45;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 6px; }
+pre code, pre tt {
+  background-color: transparent;
+  border: none; }
+
+kbd {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  box-shadow: inset 0 -1px 0 #30363d;
+  color: #e6edf3;
+  padding: 3px 5px;
+  font-size: 11px;
+  line-height: 10px; }
+
+/* Task lists */
+.task-list-item {
+  list-style-type: none; }
+.task-list-item input[type="checkbox"] {
+  margin: 0 0.35em 0.25em -1.4em;
+  vertical-align: middle; }
+
+/* Footnotes */
+.footnotes {
+  color: #8b949e;
+  border-top: 1px solid #30363d;
+  font-size: 90%; }
+
+/* Mermaid diagrams render as SVG; give them a light-on-dark safe surface. */
+.mermaid {
+  background-color: #161b22;
+  border-radius: 6px;
+  padding: 12px; }

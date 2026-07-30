@@ -67,10 +67,14 @@ public struct HTMLComposer: Sendable {
     public init() {}
 
     /// Compose the live preview document.
+    ///
+    /// - Parameter isDark: whether the resolved appearance is dark, which
+    ///   selects between the light and dark preview stylesheets.
     public func compose(
         title: String?,
         body: String,
-        preferences: Preferences
+        preferences: Preferences,
+        isDark: Bool = false
     ) -> String {
         compose(
             title: title,
@@ -78,7 +82,8 @@ public struct HTMLComposer: Sendable {
             preferences: preferences,
             purpose: .preview,
             options: ExportOptions(),
-            pageSetup: .default
+            pageSetup: .default,
+            isDark: isDark
         )
     }
 
@@ -89,13 +94,15 @@ public struct HTMLComposer: Sendable {
         preferences: Preferences,
         purpose: Purpose,
         options: ExportOptions = ExportOptions(),
-        pageSetup: PageSetup = .default
+        pageSetup: PageSetup = .default,
+        isDark: Bool = false
     ) -> String {
         var styleTags: [String] = []
         var scriptTags: [String] = []
 
-        // Base preview stylesheet
-        if options.includeStyles, let css = loadStyleCSS(named: preferences.htmlStyleName) {
+        // Base stylesheet. Paper is always white, so print ignores dark mode.
+        let styleName = preferences.htmlStyleName(dark: isDark && purpose != .print)
+        if options.includeStyles, let css = loadStyleCSS(named: styleName) {
             styleTags.append(inlineStyle(css))
         }
 
