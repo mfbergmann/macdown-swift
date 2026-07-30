@@ -23,6 +23,7 @@ public struct SplitEditorView: View {
     @State private var jump: HeadingJump?
     @State private var jumpToken = 0
     @State private var writingModes = WritingModes(preferences: .shared)
+    @State private var showsCommandPalette = false
     #if os(macOS)
     @State private var exportCoordinator = ExportCoordinator()
     #endif
@@ -63,6 +64,23 @@ public struct SplitEditorView: View {
             .toolbar { toolbarContent }
             .modifier(DocumentLifecycle(view: self))
             .modifier(MenuCommands(view: self))
+            .overlay(alignment: .top) { commandPalette }
+    }
+
+    @ViewBuilder
+    private var commandPalette: some View {
+        if showsCommandPalette {
+            // A dimmed backdrop that dismisses on click, with the palette
+            // floating near the top the way Spotlight does.
+            ZStack(alignment: .top) {
+                Color.black.opacity(0.12)
+                    .ignoresSafeArea()
+                    .onTapGesture { showsCommandPalette = false }
+                CommandPaletteView(isPresented: $showsCommandPalette)
+                    .padding(.top, 60)
+            }
+            .transition(.opacity)
+        }
     }
 
     @ViewBuilder
@@ -183,6 +201,10 @@ public struct SplitEditorView: View {
                     guard view.isKeyWindow else { return }
                     view.showsSidebar.toggle()
                     view.preferences.showsSidebar = view.showsSidebar
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .showCommandPalette)) { _ in
+                    guard view.isKeyWindow else { return }
+                    view.showsCommandPalette = true
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .toggleFocusMode)) { _ in
                     guard view.isKeyWindow else { return }

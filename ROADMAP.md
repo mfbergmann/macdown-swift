@@ -56,7 +56,7 @@ works from editor-only mode and lays out to the page rather than the window.
 - [ ] Paste/drag-drop images → save to a sidecar folder and insert a link
 - [x] **Sidebar** (⌥⌘S): document **outline** navigator (jump to headings in both panes) *and* a folder file browser for the current document's directory
 - [x] Focus mode (⌃⌘F, dims all but the current paragraph) and typewriter mode (⌥⇧⌘T, keeps the caret centred)
-- [ ] Command palette (fuzzy search over all commands)
+- [x] Command palette (⌘K) — fuzzy search over every view, format, and export command
 
 > Explicitly **not** doing: prose linting / weasel-word / filler-word highlighting.
 > Interesting, but it's the feature sprawl the north star warns against.

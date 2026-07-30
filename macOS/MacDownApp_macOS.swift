@@ -104,6 +104,13 @@ struct MacDownApp: App {
 
         CommandGroup(after: .sidebar) {
             Section {
+                Button("Command Palette…") {
+                    NotificationCenter.default.post(name: .showCommandPalette, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
+            }
+
+            Section {
                 Button("Show or Hide Sidebar") {
                     NotificationCenter.default.post(name: .toggleSidebar, object: nil)
                 }

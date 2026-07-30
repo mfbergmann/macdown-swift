@@ -31,4 +31,7 @@ public extension Notification.Name {
 
     /// Object: an `ExportCommand` raw value. Runs an export/print/copy action.
     static let exportDocument = Notification.Name("exportDocument")
+
+    /// Object: `nil`. Opens the fuzzy command palette.
+    static let showCommandPalette = Notification.Name("showCommandPalette")
 }
